@@ -2,7 +2,7 @@
 
 **A voice-first flood and backwater situation room for Alappuzha. Residents report in Malayalam (or Hindi, Tamil, English) by voice. AI combines their reports with live rain and river forecasts. Officials send verified voice alerts back to residents' phones in their own language.**
 
-**🔗 Live demo: https://kayal-saathi.onrender.com** · Situation Room: https://kayal-saathi.onrender.com/dashboard · Source: https://github.com/hemanthbs54/kayal_Saathi
+<img src="docs/icons/link.svg" width="18" height="18" align="top" alt="" /> **Live demo: https://kayal-saathi.onrender.com** · Situation Room: https://kayal-saathi.onrender.com/dashboard · Source: https://github.com/hemanthbs54/kayal_Saathi
 
 Built solo for **HackaThoni 2026: The Houseboat Hackathon** (Alappuzha, 21–22 Nov).
 Primary track: **02 Beyond English (Sarvam)**. It also covers **01 The Alappuzha Challenge** (floods, backwater waste, livelihoods) and **03 Beyond the Screen** (voice, camera, GPS, offline).
@@ -56,35 +56,20 @@ Much of Kuttanad is farmed **below sea level** behind earthen bunds. When rain a
 
 ## The loop
 
-```
-  RESIDENT (phone, any language)                       OFFICIAL (Situation Room)
-  ─────────────────────────────                        ──────────────────────────
-  🎙️ speaks a report  ─┐                          ┌─►  incidents on a live map,
-  📷 photo  📍 GPS     │                          │    duplicates merged + confirmed
-  📶 no signal? queued │   Sarvam Saaras v4 STT   │
-     and sent later    ├─► Sarvam-105B triage ────┤    flood-risk index per village
-                       │   (translate, category,  │    = rain forecast + river forecast
-                       │    severity, place)      │      + resident reports + terrain
-                       │                          │
-  🔔 hears an alert  ◄─┼── Bulbul v3 TTS ◄──── Sarvam Translate ◄── 📢 official reviews
-     in Malayalam /    │   (ml / hi / en)       (ml + hi, scripts      & sends an alert,
-     Hindi / English   │                         and dates verified)   targeted by radius
-                       │
-  ❓ "Will Kainakary flood?" ─► answer grounded in incidents + risk + alerts, spoken back
-```
+<img src="docs/architecture.svg" alt="Flow: a resident speaks a report with photo and GPS (queued if offline) -> Sarvam Saaras v4 speech-to-text and Sarvam-105B triage -> incidents on a live map and a flood-risk index per village built from rain and river forecasts, resident reports and terrain. The official reviews and sends an alert targeted by radius -> Sarvam Translate and Bulbul v3 voice -> the resident hears it in Malayalam, Hindi or English. A resident asks by voice and gets a grounded spoken answer." />
 
 ## Features
 
 | | Feature | Depth |
 |---|---|---|
-| 🎙️ | **Voice reporting in any Indian language** | Auto language detection (`saaras:v4`, `language_code=unknown`), Malayalam + English place-name hints, fuzzy matching of misheard village names |
-| 🌧️ | **Flood-risk index for 13 villages (0–100)** | Live **rainfall forecasts** (Open-Meteo, with automatic fallback to **MET Norway**; checked on 21 Nov, the two agreed within 0.1 mm for Kainakary: 25.2 vs 25.3 mm on 25 Nov), **GloFAS river-discharge** forecasts, open flood reports within 3 km (severity- and recency-weighted), and terrain (below-sea-level Kuttanad polders score highest). Every score is **explained** ("25 mm on Wednesday 25 November; river rising to 1.4×; 3 flood reports within 3 km") |
-| 👥 | **Incidents, not just pins** | Reports of the same problem within 600 m and 72 h merge into one incident with a confirmation count. 2+ reports or a photo marks it **confirmed**, which cuts duplicates and spam |
-| 📢 | **Location-targeted voice alerts** | Official picks an area or incident → AI writes the alert in English from verified facts only → **Sarvam Translate** produces Malayalam + Hindi → official reviews and edits → Bulbul voices all three → phones within the chosen radius show it and play it |
-| ❓ | **Ask by voice** | Answers are grounded in incidents, the risk index and active alerts; first-hand reports take priority; spoken back in the asker's language |
-| 📋 | **AI situation brief** | One click: English brief for the district team + Malayalam voice summary for ward members |
-| 📶 | **Works without signal** | Reports made offline (audio + photo) are stored on the phone (IndexedDB) and sent automatically on reconnect, keeping the original capture time. The app itself opens with no signal (service worker) |
-| 📷 | **Photos that just work** | Camera photos are rotated upright, shrunk to ~1280 px and re-encoded as JPEG on the phone. A format the phone can't decode is refused with a clear message instead of being silently dropped |
+| <img src="docs/icons/mic.svg" width="28" height="28" alt="" /> | **Voice reporting in any Indian language** | Auto language detection (`saaras:v4`, `language_code=unknown`), Malayalam + English place-name hints, fuzzy matching of misheard village names |
+| <img src="docs/icons/rain.svg" width="28" height="28" alt="" /> | **Flood-risk index for 13 villages (0–100)** | Live **rainfall forecasts** (Open-Meteo, with automatic fallback to **MET Norway**; checked on 21 Nov, the two agreed within 0.1 mm for Kainakary: 25.2 vs 25.3 mm on 25 Nov), **GloFAS river-discharge** forecasts, open flood reports within 3 km (severity- and recency-weighted), and terrain (below-sea-level Kuttanad polders score highest). Every score is **explained** ("25 mm on Wednesday 25 November; river rising to 1.4×; 3 flood reports within 3 km") |
+| <img src="docs/icons/users.svg" width="28" height="28" alt="" /> | **Incidents, not just pins** | Reports of the same problem within 600 m and 72 h merge into one incident with a confirmation count. 2+ reports or a photo marks it **confirmed**, which cuts duplicates and spam |
+| <img src="docs/icons/megaphone.svg" width="28" height="28" alt="" /> | **Location-targeted voice alerts** | Official picks an area or incident → AI writes the alert in English from verified facts only → **Sarvam Translate** produces Malayalam + Hindi → official reviews and edits → Bulbul voices all three → phones within the chosen radius show it and play it |
+| <img src="docs/icons/help.svg" width="28" height="28" alt="" /> | **Ask by voice** | Answers are grounded in incidents, the risk index and active alerts; first-hand reports take priority; spoken back in the asker's language |
+| <img src="docs/icons/clipboard.svg" width="28" height="28" alt="" /> | **AI situation brief** | One click: English brief for the district team + Malayalam voice summary for ward members |
+| <img src="docs/icons/wifioff.svg" width="28" height="28" alt="" /> | **Works without signal** | Reports made offline (audio + photo) are stored on the phone (IndexedDB) and sent automatically on reconnect, keeping the original capture time. The app itself opens with no signal (service worker) |
+| <img src="docs/icons/camera.svg" width="28" height="28" alt="" /> | **Photos that just work** | Camera photos are rotated upright, shrunk to ~1280 px and re-encoded as JPEG on the phone. A format the phone can't decode is refused with a clear message instead of being silently dropped |
 
 ## Accuracy and safety: measured, not assumed
 
