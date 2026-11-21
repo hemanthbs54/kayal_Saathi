@@ -62,7 +62,14 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
 
   // ---------- meta ----------
   app.get('/api/health', (req, res) => {
-    res.json({ ok: true, mock: isMock(), usage });
+    res.json({
+      ok: true,
+      mock: isMock(),
+      // Render injects these at deploy time; they show exactly which repo and commit is live.
+      repo: process.env.RENDER_GIT_REPO_SLUG || null,
+      commit: process.env.RENDER_GIT_COMMIT ? process.env.RENDER_GIT_COMMIT.slice(0, 7) : null,
+      usage,
+    });
   });
   app.get('/api/categories', (req, res) => res.json(CATEGORIES));
 
