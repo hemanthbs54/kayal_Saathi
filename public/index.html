@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Kayal Saathi</title>
+  <meta name="description" content="Report backwater waste and flooding in Malayalam by voice." />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <img class="logo" src="/favicon.svg" alt="" />
+        <div>
+          <h1>കായൽ സാഥി</h1>
+          <p>Kayal Saathi · Alappuzha</p>
+        </div>
+      </div>
+      <span id="mode" class="pill">…</span>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="report">റിപ്പോർട്ട്<span>Report a problem</span></button>
+      <button role="tab" aria-selected="false" data-tab="ask">ചോദിക്കുക<span>Ask about your area</span></button>
+    </nav>
+
+    <!-- REPORT -->
+    <section id="tab-report">
+      <div class="card">
+        <div class="mic-wrap">
+          <button id="rec-btn" class="mic" aria-label="Record report">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          </button>
+          <div id="rec-label" class="mic-label">സംസാരിക്കാൻ അമർത്തുക<span>Tap and speak in Malayalam, Hindi, Tamil or English</span></div>
+          <div id="rec-timer" class="timer"></div>
+        </div>
+        <details>
+          <summary>ടൈപ്പ് ചെയ്യാം · Type instead</summary>
+          <textarea id="report-text" placeholder="ഉദാ: പുന്നമട ജെട്ടിക്ക് സമീപം പ്ലാസ്റ്റിക് മാലിന്യം…"></textarea>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <label class="btn" for="photo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/></svg>
+            ഫോട്ടോ · Photo
+          </label>
+          <input id="photo" type="file" accept="image/*" capture="environment" hidden />
+          <span id="audio-state" class="small muted"></span>
+        </div>
+        <img id="photo-preview" class="preview" alt="Photo preview" />
+        <div class="status-line"><span id="gps-dot" class="dot"></span><span id="gps-text">Locating…</span></div>
+      </div>
+
+      <button id="send-btn" class="btn primary block" disabled>അയയ്ക്കുക · Send report</button>
+      <div id="report-out" class="hidden" aria-live="polite"></div>
+    </section>
+
+    <!-- ASK -->
+    <section id="tab-ask" class="hidden">
+      <div class="card">
+        <div class="mic-wrap">
+          <button id="ask-btn" class="mic" aria-label="Ask a question">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          </button>
+          <div id="ask-label" class="mic-label">ചോദ്യം ചോദിക്കൂ<span>e.g. “Is there flooding near Kainakary?”</span></div>
+          <div id="ask-timer" class="timer"></div>
+        </div>
+        <div class="examples" id="examples">
+          <button>കൈനകരിയിൽ വെള്ളപ്പൊക്കമുണ്ടോ?</button>
+          <button>ഏത് തോടുകളാണ് അടഞ്ഞു കിടക്കുന്നത്?</button>
+          <button>Is it safe to take a boat to Champakulam?</button>
+        </div>
+      </div>
+      <div id="ask-out" class="hidden" aria-live="polite"></div>
+    </section>
+
+    <p class="footer-link"><a href="/dashboard">പഞ്ചായത്ത് ഡാഷ്ബോർഡ് · Authority dashboard →</a></p>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "Kayal Saathi",
+  "short_name": "Kayal Saathi",
+  "description": "Report backwater waste and flooding in Malayalam by voice.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f1ea",
+  "theme_color": "#0f766e",
+  "lang": "ml"
+}

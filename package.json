@@ -1,0 +1,23 @@
+{
+  "name": "kayal-saathi",
+  "version": "1.0.0",
+  "description": "Voice-first Malayalam reporting of backwater waste and flooding in Alappuzha, powered by Sarvam AI",
+  "main": "server.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "express": "^5.3.0",
+    "multer": "^2.5.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
