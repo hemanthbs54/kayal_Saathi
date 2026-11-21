@@ -8,6 +8,7 @@
   <meta name="description" content="Report backwater waste and flooding in Malayalam by voice." />
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -28,13 +29,14 @@
     <div id="my-risk" class="risk-mini hidden"></div>
 
     <nav class="tabs" role="tablist">
-      <button role="tab" aria-selected="true" data-tab="report">റിപ്പോർട്ട്<span>Report a problem</span></button>
-      <button role="tab" aria-selected="false" data-tab="ask">ചോദിക്കുക<span>Ask about your area</span></button>
+      <button role="tab" aria-selected="true" data-tab="report"><b class="ti">🎙️</b>റിപ്പോർട്ട്<span>Report a problem</span></button>
+      <button role="tab" aria-selected="false" data-tab="ask" class="hint"><b class="ti">💬</b>ചോദിക്കുക<span>Ask about your area</span></button>
     </nav>
 
     <!-- REPORT -->
     <section id="tab-report">
       <div class="card">
+        <div class="step"><i>1</i>സംസാരിക്കുക · Speak your report</div>
         <div class="mic-wrap">
           <button id="rec-btn" class="mic" aria-label="Record report">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
@@ -49,6 +51,7 @@
       </div>
 
       <div class="card">
+        <div class="step"><i>2</i>ഫോട്ടോ (ആവശ്യമെങ്കിൽ) · Photo, optional</div>
         <div class="row">
           <label class="btn" for="photo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -61,7 +64,7 @@
         <div class="status-line"><span id="gps-dot" class="dot"></span><span id="gps-text">Locating…</span></div>
       </div>
 
-      <button id="send-btn" class="btn primary block" disabled>അയയ്ക്കുക · Send report</button>
+      <button id="send-btn" class="btn primary block" disabled><i class="step-n">3</i>അയയ്ക്കുക · Send report</button>
       <div id="report-out" class="hidden" aria-live="polite"></div>
     </section>
 

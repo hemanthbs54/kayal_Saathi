@@ -7,6 +7,44 @@
 Built solo for **HackaThoni 2026: The Houseboat Hackathon** (Alappuzha, 21–22 Nov).
 Primary track: **02 Beyond English (Sarvam)**. It also covers **01 The Alappuzha Challenge** (floods, backwater waste, livelihoods) and **03 Beyond the Screen** (voice, camera, GPS, offline).
 
+<p align="center">
+  <img src="public/icon-192.png" width="88" alt="Kayal Saathi logo: a Kerala houseboat on the backwater" />
+</p>
+
+## See it working
+
+All screenshots below are from the real app running with the **live Sarvam AI**: real Malayalam speech, real translations, real forecasts. Nothing is mocked up.
+
+### Resident app (phone)
+
+| 1 · Home | 2 · Speak a report | 3 · Ask by voice |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/01-resident-home.png" width="250" alt="Resident home: flood risk near you, numbered steps, big mic button" /> | <img src="docs/screenshots/02-voice-report.png" width="250" alt="Malayalam voice report transcribed, translated, categorised, merged with 3 other residents" /> | <img src="docs/screenshots/03-ask-forecast.png" width="250" alt="Spoken Malayalam answer using the live rain forecast" /> |
+| Flood risk for *your* village, numbered steps, one big mic | Malayalam speech → transcript, English translation, category, severity, merged with 3 earlier reports | "Will rain increase in Kuttanad?" → spoken Malayalam answer from the live forecast |
+
+| 4 · Receives an official alert | 5 · No signal on the boat |
+|:---:|:---:|
+| <img src="docs/screenshots/07-resident-alert.png" width="250" alt="Official voice alert received in Malayalam with Hindi and English options" /> | <img src="docs/screenshots/09-offline-queue.png" width="250" alt="Offline banner: report saved on the phone, sent automatically later" /> |
+| Plays in Malayalam; one tap for Hindi or English | Report saved on the phone, sent automatically when signal returns |
+
+### Situation Room (officials)
+
+**Incidents:** duplicate reports merged; each shows every resident's words in their own language.
+<img src="docs/screenshots/04-situation-room-incidents.png" alt="Situation Room: incident list and map; Kainakary incident with 4 reports in Malayalam and Hindi" />
+
+**Flood risk:** an explainable 0–100 score per village, built from live rain + river forecasts, reports and terrain.
+<img src="docs/screenshots/05-flood-risk.png" alt="Flood-risk detail for Kainakary: reasons, score breakdown, 7-day rainfall and river discharge charts" />
+
+**Voice alert:** AI drafts it, Sarvam Translate makes Malayalam + Hindi, and the official reviews it before sending.
+<img src="docs/screenshots/06-alert-review.png" alt="Alert review modal with Malayalam, Hindi and English text and a radius selector" />
+
+**Situation brief:** one click gives an English brief for the district team and a Malayalam voice summary for ward members.
+<img src="docs/screenshots/08-situation-brief.png" alt="AI situation brief with overall status, top flood risks, incidents and recommended actions" />
+
+| Phone layout | Dark mode |
+|:---:|:---:|
+| <img src="docs/screenshots/10-situation-room-mobile.png" width="260" alt="Situation Room on a phone" /> | <img src="docs/screenshots/11-dark-mode.png" width="520" alt="Situation Room in dark mode with dimmed map" /> |
+
 ---
 
 ## The problem
@@ -74,11 +112,15 @@ Issues the evaluation caught and fixed: an LLM writing Malayalam into the Hindi 
 ## Tests
 
 ```bash
-npm test        # 31 unit + API tests, offline (mock mode, no credits)
+npm test        # 32 unit + API tests, offline (mock mode, no credits)
 npm run eval    # live accuracy evaluation against Sarvam (~₹6)
 ```
 
 A 19-step browser test (Playwright, real Chrome, **live Sarvam AI**) covers: a Malayalam voice report through the real microphone path, photo upload, the offline queue and reconnect, the incident merge, status changes, risk charts, alert draft → edit → broadcast, a resident inside the radius receiving it in Malayalam and Hindi, a resident 20 km away not receiving it, the brief, live fly-to, layer toggles and the mobile layout. **19/19 pass.**
+
+Real output from the final build (unit tests, live browser E2E, live accuracy evaluation):
+
+<img src="docs/screenshots/12-test-results.png" alt="Test results: 32/32 unit and API tests, 19/19 live browser end-to-end steps, 10/10 voice accuracy" />
 
 ## Run it
 

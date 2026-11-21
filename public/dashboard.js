@@ -152,7 +152,7 @@ function renderIncidentList() {
         <span class="badge ${i.status}">${STATUS[i.status]}</span>
         ${i.confirmations > 1 ? `<span class="badge count">👥 ${i.confirmations} reports</span>` : ''}
         ${i.verified ? '<span class="badge ok">✓ confirmed</span>' : ''}
-        <span>${i.langs.map((l) => esc((LANG[l] || l).slice(0, 2).toUpperCase())).join(' ')}</span>
+        <span title="${esc(i.langs.map((l) => LANG[l] || l).join(', '))}">${i.langs.map((l) => esc(String(l).slice(0, 2).toUpperCase())).join(' · ')}</span>
         <span class="sev" title="Severity ${i.severity}/5">${'●'.repeat(i.severity)}</span>
         ${i.sample ? '<span class="sample">sample</span>' : ''}
       </div>
@@ -178,7 +178,7 @@ function renderRiskLayer() {
   for (const a of state.risk?.areas || []) {
     const color = css(LEVEL_COLOR[a.level]);
     L.circle([a.lat, a.lng], {
-      pane: 'risk', radius: 1600, color, weight: 1.5, fillColor: color,
+      pane: 'risk', radius: 1600, color, weight: 1.5, fillColor: color, className: `risk-${a.level}`,
       fillOpacity: a.level === 'low' ? 0.08 : 0.22,
     })
       .bindTooltip(`<b>${esc(a.name)}</b> · flood risk ${a.score}/100 (${esc(a.levelEn)})`, { sticky: true })
@@ -285,9 +285,9 @@ function renderRiskDetail() {
     <ul>${a.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
     <div class="chart-title">What drives the score</div>
     ${comps.map(([n, v, m]) => `<div class="comp"><span>${n}</span><div class="track"><div class="fill" style="width:${(v / m) * 100}%"></div></div><b>${v}/${m}</b></div>`).join('')}
-    <div class="chart-title">Rainfall forecast (mm/day)</div><div class="chart-sub">Open-Meteo · next 7 days</div>
+    <div class="chart-title">Rainfall forecast (mm/day)</div><div class="chart-sub">${/MET Norway/.test(state.risk.source) ? 'MET Norway' : /synthetic/.test(state.risk.source) ? 'Demo data' : 'Open-Meteo'} · next 7 days</div>
     ${a.days.length ? rainChart(a.days) : '<p class="small muted">Rain forecast unavailable.</p>'}
-    <div class="chart-title">River discharge forecast (m³/s)</div><div class="chart-sub">GloFAS · nearest river cell</div>
+    <div class="chart-title">River discharge forecast (m³/s)</div><div class="chart-sub">${/synthetic/.test(state.risk.source) ? 'Demo data' : 'GloFAS'} · nearest river cell</div>
     ${riverChart(a.days)}
     <button class="btn primary block" data-alert style="margin-top:12px">📢 Draft voice alert for ${esc(a.name)}</button>
   </div>`;
@@ -354,7 +354,10 @@ $('#brief-btn').onclick = () => {
   const body = m.el.querySelector('#br-body');
   api('/api/brief', { method: 'POST' })
     .then((b) => {
-      body.innerHTML = `<div class="brief-text">${esc(b.en)}</div>
+      const briefHtml = esc(b.en)
+        .replace(/\s*(Overall|Top flood risks|Incidents needing action|Recommended actions):/g, (m, l) => `${l === 'Overall' ? '' : '\n\n'}<b>${l}:</b>`)
+        .trim();
+      body.innerHTML = `<div class="brief-text">${briefHtml}</div>
         ${b.ml ? `<label>മലയാളം ശബ്ദസന്ദേശം · Malayalam voice summary for ward members</label><div class="brief-text">${esc(b.ml)}</div>` : ''}
         ${b.audio ? `<audio controls src="data:audio/mpeg;base64,${b.audio}" style="width:100%;margin-top:8px"></audio>` : ''}
         <p class="small muted">Generated ${ago(b.at)}.</p>
@@ -398,13 +401,27 @@ async function relayRiver(risk) {
 }
 
 // ---------- stats + polling ----------
+function setStat(id, value) {
+  const el = $(id);
+  const to = Number(value);
+  const from = Number(el.textContent) || 0;
+  if (!Number.isFinite(to) || matchMedia('(prefers-reduced-motion: reduce)').matches || from === to) { el.textContent = value; return; }
+  const t0 = performance.now();
+  const tick = (t) => {
+    const k = Math.min(1, (t - t0) / 600);
+    el.textContent = Math.round(from + (to - from) * (1 - (1 - k) ** 3));
+    if (k < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 function renderStats() {
   const open = state.incidents.filter((i) => i.status !== 'resolved');
-  $('#s-open').textContent = open.length;
-  $('#s-verified').textContent = open.filter((i) => i.verified).length;
-  $('#s-risk').textContent = state.risk ? state.risk.areas.filter((a) => a.level === 'high' || a.level === 'severe').length : '–';
-  $('#s-alerts').textContent = state.alerts.length;
-  $('#s-lang').textContent = new Set(state.incidents.flatMap((i) => i.langs)).size;
+  setStat('#s-open', open.length);
+  setStat('#s-verified', open.filter((i) => i.verified).length);
+  setStat('#s-risk', state.risk ? state.risk.areas.filter((a) => a.level === 'high' || a.level === 'severe').length : '–');
+  setStat('#s-alerts', state.alerts.length);
+  setStat('#s-lang', new Set(state.incidents.flatMap((i) => i.langs)).size);
 }
 
 async function load(path, key, onChange) {

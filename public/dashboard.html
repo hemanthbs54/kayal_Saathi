@@ -6,6 +6,7 @@
   <title>Kayal Saathi Situation Room</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="stylesheet" href="/style.css" />
   <style>
     body { height: 100dvh; display: flex; flex-direction: column; }
@@ -67,6 +68,14 @@
     @media (max-width: 860px) {
       .layout { grid-template-columns: 1fr; grid-template-rows: 55vh auto; }
       aside { order: 2; border-right: 0; }
+      .top { gap: 8px; }
+      .top-right { width: 100%; }
+      .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; }
+      .stat { min-width: 0; padding: 4px 6px; text-align: center; }
+      .stat b { font-size: 1.05rem; }
+      .stat span { font-size: .6rem; line-height: 1.15; display: block; }
+      #brief-btn { width: 100%; justify-content: center; }
+      .brand h1 { font-size: 1rem; }
     }
   </style>
 </head>
@@ -79,7 +88,7 @@
     <div class="top-right">
       <div class="stats">
         <div class="stat"><b id="s-open">–</b><span>Open incidents</span></div>
-        <div class="stat"><b id="s-verified">–</b><span>Confirmed (2+ reports or photo)</span></div>
+        <div class="stat" title="Confirmed = 2 or more residents reported it, or it has a photo"><b id="s-verified">–</b><span>Confirmed incidents</span></div>
         <div class="stat"><b id="s-risk">–</b><span>Areas at high flood risk</span></div>
         <div class="stat"><b id="s-alerts">–</b><span>Alerts sent (24 h)</span></div>
         <div class="stat"><b id="s-lang">–</b><span>Languages heard</span></div>

@@ -1,6 +1,6 @@
 // Service worker: keeps the resident app shell available without signal.
 // Network-first (so deploys show up immediately), falling back to the cached copy offline.
-const CACHE = 'kayal-shell-v3';
+const CACHE = 'kayal-shell-v4';
 const SHELL = ['/', '/style.css', '/app.js', '/offline.js', '/favicon.svg', '/manifest.json'];
 
 self.addEventListener('install', (e) => {

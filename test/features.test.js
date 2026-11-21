@@ -97,6 +97,14 @@ describe('place-name protection for translation', async () => {
     assert.ok(g.restore(g.text, 'hi-IN').includes('कैनकरी'));
     assert.equal(g.intact('no tokens here'), false);
   });
+  test('Malayalam case endings attach to restored names', async () => {
+    const { joinMl } = await import('../src/places.js');
+    assert.equal(joinMl('കൈനകരി', 'ൽ'), 'കൈനകരിയിൽ');
+    assert.equal(joinMl('ചമ്പക്കുളം', 'ൽ'), 'ചമ്പക്കുളത്തിൽ');
+    assert.equal(joinMl('മങ്കൊമ്പ്', 'ൽ'), 'മങ്കൊമ്പിൽ');
+    const g = protectPlaces('Flood risk in Kainakary.');
+    assert.equal(g.restore('{{P1}} ൽ വെള്ളപ്പൊക്ക സാധ്യത.', 'ml-IN'), 'കൈനകരിയിൽ വെള്ളപ്പൊക്ക സാധ്യത.');
+  });
 });
 
 describe('incident clustering', () => {

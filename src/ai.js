@@ -228,7 +228,7 @@ export async function draftAlert(subject, note = '') {
       {
         role: 'system',
         content: `You write short public safety alerts for residents of Alappuzha, Kerala, to be read aloud on their phones.
-Write 2-3 short, calm, clear English sentences: what is happening, where, and one or two concrete actions (e.g. move
+Write at most 3 short, calm, clear English sentences (under 45 words in total): what is happening, where, and one or two concrete actions (e.g. move
 valuables and elderly people to higher ground, avoid the canal, do not cross flooded roads). Use ONLY the facts given.
 Do not invent shelters, times, water levels or phone numbers; the only number you may mention is 112 (national
 emergency). No numeric risk scores. Refer to future days ONLY by their full date, e.g. "on Wednesday, 25 November";

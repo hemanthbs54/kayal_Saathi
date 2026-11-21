@@ -124,9 +124,26 @@ export function protectPlaces(text) {
   const restore = (translated, lang) => {
     const key = lang === 'ml-IN' ? 'ml' : lang === 'hi-IN' ? 'hi' : 'name';
     let r = translated;
-    used.forEach((p, i) => { r = r.split(`{{P${i + 1}}}`).join(p[key] || p.name); });
+    used.forEach((p, i) => {
+      const token = `{{P${i + 1}}}`;
+      const name = p[key] || p.name;
+      if (key === 'ml') {
+        const re = new RegExp(String.raw`\{\{P${i + 1}\}\}\s*(ൽ|ലെ|ന്|ിൽ|ിലെ|യിൽ|യിലെ)(?=[\s,.;:!?]|$)`, 'g');
+        r = r.replace(re, (_, suf) => joinMl(name, suf));
+      }
+      r = r.split(token).join(name);
+    });
     return r;
   };
   const intact = (translated) => used.every((_, i) => translated.includes(`{{P${i + 1}}}`));
   return { text: out, restore, intact, count: used.length };
+}
+
+/** Attach a Malayalam case ending to a place name: കൈനകരി + ൽ -> കൈനകരിയിൽ, ചമ്പക്കുളം + ൽ -> ചമ്പക്കുളത്തിൽ. */
+export function joinMl(name, suffix) {
+  const s = suffix.replace(/^(ി|യി)/, '');            // normalise to ൽ / ലെ / ന്
+  if (/[ിീെേൈ]$/.test(name)) return name + (s === 'ന്' ? 'ക്ക്' : 'യി' + s); // vowel-final: കൈനകരിയിൽ
+  if (/ം$/.test(name)) return name.slice(0, -1) + 'ത്തി' + (s === 'ന്' ? 'ന്' : s); // -ം: ചമ്പക്കുളത്തിൽ
+  if (/്$/.test(name)) return name.slice(0, -1) + 'ി' + s;                          // -്: മങ്കൊമ്പിൽ
+  return name + 'ിൽ'.replace('ൽ', s === 'ന്' ? 'ന്' : s);
 }
