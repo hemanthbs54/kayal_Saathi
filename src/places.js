@@ -112,8 +112,12 @@ export function nativePlaceNames(text, lang) {
  * intact), translate, then put back the correct native spelling. Without this, the translator respells
  * village names ("Kainakary" -> "കനകക്കര"), and residents may not recognise their own village in an alert.
  */
+// Domain words the translator gets wrong (it rendered "backwater" in Hindi as पिछवाड़े, "backyard").
+// Protected exactly like place names and restored with the correct local term.
+export const GLOSSARY = ['Backwaters', 'backwaters', 'Backwater', 'backwater'].map((name) => ({ name, ml: 'കായൽ', hi: 'बैकवाटर' }));
+
 export function protectPlaces(text) {
-  const all = [...RISK_AREAS, ...PLACES].sort((a, b) => b.name.length - a.name.length);
+  const all = [...RISK_AREAS, ...PLACES, ...GLOSSARY].sort((a, b) => b.name.length - a.name.length);
   const used = [];
   let out = text;
   for (const p of all) {
@@ -145,5 +149,6 @@ export function joinMl(name, suffix) {
   if (/[ിീെേൈ]$/.test(name)) return name + (s === 'ന്' ? 'ക്ക്' : 'യി' + s); // vowel-final: കൈനകരിയിൽ
   if (/ം$/.test(name)) return name.slice(0, -1) + 'ത്തി' + (s === 'ന്' ? 'ന്' : s); // -ം: ചമ്പക്കുളത്തിൽ
   if (/്$/.test(name)) return name.slice(0, -1) + 'ി' + s;                          // -്: മങ്കൊമ്പിൽ
+  if (/ൽ$/.test(name)) return name.slice(0, -1) + 'ലി' + (s === 'ന്' ? 'ന്' : s);  // chillu: കായലിൽ
   return name + 'ിൽ'.replace('ൽ', s === 'ന്' ? 'ന്' : s);
 }

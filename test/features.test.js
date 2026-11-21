@@ -102,6 +102,10 @@ describe('place-name protection for translation', async () => {
     assert.equal(joinMl('കൈനകരി', 'ൽ'), 'കൈനകരിയിൽ');
     assert.equal(joinMl('ചമ്പക്കുളം', 'ൽ'), 'ചമ്പക്കുളത്തിൽ');
     assert.equal(joinMl('മങ്കൊമ്പ്', 'ൽ'), 'മങ്കൊമ്പിൽ');
+    assert.equal(joinMl('കായൽ', 'ൽ'), 'കായലിൽ');
+    const b = protectPlaces('Low-lying backwater shores in Alappuzha Town.');
+    assert.ok(!b.text.includes('backwater'));
+    assert.ok(b.restore(b.text, 'hi-IN').includes('बैकवाटर'));
     const g = protectPlaces('Flood risk in Kainakary.');
     assert.equal(g.restore('{{P1}} ൽ വെള്ളപ്പൊക്ക സാധ്യത.', 'ml-IN'), 'കൈനകരിയിൽ വെള്ളപ്പൊക്ക സാധ്യത.');
   });
