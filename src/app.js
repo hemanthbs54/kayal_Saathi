@@ -7,7 +7,7 @@ import { createStore } from './store.js';
 import { transcribe, triage, answer, draftAlert, voiceAlert, situationBrief, detectScript, scriptProblems, isMock, CATEGORIES } from './ai.js';
 import { matchPlace, ALAPPUZHA_CENTER, distanceKm } from './places.js';
 import { clusterReports, incidentForReport } from './incidents.js';
-import { getForecast } from './weather.js';
+import { getForecast, acceptRiverRelay, needsRiverRelay } from './weather.js';
 import { computeRisk } from './risk.js';
 import { usage } from './sarvam.js';
 
@@ -184,7 +184,15 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
   });
 
   // ---------- flood risk ----------
-  app.get('/api/risk', async (req, res) => res.json(await risk()));
+  app.get('/api/risk', async (req, res) => {
+    const f = await getForecast();
+    res.json({ ...computeRisk(f, store.list()), needsRiverRelay: needsRiverRelay(f) });
+  });
+  app.post('/api/weather/river', requireAdmin, adminLimit, (req, res) => {
+    const accepted = acceptRiverRelay(req.body?.areas);
+    if (!accepted) return res.status(400).json({ error: 'No valid river data.' });
+    res.json({ accepted });
+  });
 
   // ---------- alerts ----------
   async function resolveSubject(body) {

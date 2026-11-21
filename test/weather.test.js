@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 
 delete process.env.MOCK;
 const realFetch = globalThis.fetch;
-const { getForecast, _resetWeatherCache } = await import('../src/weather.js');
+const { getForecast, _resetWeatherCache, acceptRiverRelay, needsRiverRelay } = await import('../src/weather.js');
 const { RISK_AREAS } = await import('../src/places.js');
 
 const json = (body, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
@@ -58,6 +58,33 @@ test('all providers down: no crash, empty areas, error reported, no hammering', 
     const before = calls;
     await getForecast(); // within retry window: served from the failure cache
     assert.equal(calls, before);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('river relay: validated, merged when the server cannot reach GloFAS', async () => {
+  _resetWeatherCache();
+  globalThis.fetch = (url) => {
+    const u = String(url);
+    if (u.includes('api.met.no')) return json(metBody());
+    return json({ reason: 'limit' }, 429); // both Open-Meteo hosts blocked
+  };
+  try {
+    const before = await getForecast();
+    assert.match(before.source, /river data unavailable/);
+    assert.equal(needsRiverRelay(before), true);
+    // invalid payloads are rejected
+    assert.equal(acceptRiverRelay([{ name: 'Atlantis', past: [1], next: [2], dates: ['2026-11-21'] }]), 0);
+    assert.equal(acceptRiverRelay([{ name: 'Kainakary', past: [1], next: [-5], dates: ['2026-11-21'] }]), 0);
+    assert.equal(acceptRiverRelay([{ name: 'Kainakary', past: [1], next: [2, 3], dates: ['2026-11-21'] }]), 0);
+    assert.equal(acceptRiverRelay('nope'), 0);
+    // valid relay
+    assert.equal(acceptRiverRelay([{ name: 'Kainakary', past: [5, 5], next: [9, 10], dates: [istDay(0), istDay(1)] }]), 1);
+    const after = await getForecast();
+    assert.match(after.source, /relayed/);
+    assert.deepEqual(after.areas.find((a) => a.name === 'Kainakary').river.next, [9, 10]);
+    assert.equal(needsRiverRelay(after), false);
   } finally {
     globalThis.fetch = realFetch;
   }

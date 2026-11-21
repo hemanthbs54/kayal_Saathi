@@ -403,6 +403,38 @@ $('#brief-btn').onclick = () => {
     .catch((err) => { body.innerHTML = `<p class="error">${esc(err.message)}</p>`; });
 };
 
+// ---------- river relay ----------
+// If the server cannot reach the GloFAS river forecast (cloud IP rate limits), a signed-in official's
+// browser fetches it and relays it (passcode-protected). Tried at most every 30 minutes.
+let lastRelay = 0;
+async function relayRiver(risk) {
+  if (!risk.needsRiverRelay || !ls.get('kayal-pass') || Date.now() - lastRelay < 30 * 60e3) return;
+  lastRelay = Date.now();
+  try {
+    const lat = risk.areas.map((a) => a.lat).join(',');
+    const lng = risk.areas.map((a) => a.lng).join(',');
+    const f = [].concat(await (await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${lat}&longitude=${lng}&daily=river_discharge&past_days=7&forecast_days=7`)).json());
+    const today = new Date(Date.now() + 5.5 * 36e5).toISOString().slice(0, 10);
+    const areas = risk.areas.map((a, i) => {
+      const dly = f[i]?.daily;
+      if (!dly?.time) return null;
+      let cut = dly.time.findIndex((t) => t >= today);
+      if (cut < 0) cut = dly.time.length;
+      return {
+        name: a.name,
+        past: dly.river_discharge.slice(0, cut).filter((v) => v != null),
+        next: dly.river_discharge.slice(cut).map((v) => v ?? 0),
+        dates: dly.time.slice(cut),
+      };
+    }).filter(Boolean);
+    await fetch('/api/weather/river', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-passcode': ls.get('kayal-pass') }, body: JSON.stringify({ areas }) });
+    sigs.risk = '';
+    refresh();
+  } catch (e) {
+    console.warn('River relay failed', e);
+  }
+}
+
 // ---------- stats + polling ----------
 function renderStats() {
   const open = state.incidents.filter((i) => i.status !== 'resolved');
@@ -433,7 +465,7 @@ async function refresh() {
         if (!firstLoad && fresh) { showPanel('incidents'); focusIncident(fresh.id); }
         data.forEach((i) => i.reports.forEach((r) => knownReports.add(r.id)));
       }),
-      load('/api/risk', 'risk', (data) => { state.risk = data; renderRiskLayer(); renderRiskList(); }),
+      load('/api/risk', 'risk', (data) => { state.risk = data; renderRiskLayer(); renderRiskList(); relayRiver(data); }),
       load('/api/alerts', 'alerts', (data) => { state.alerts = data; renderAlerts(); }),
     ]);
     renderStats();

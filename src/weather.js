@@ -113,6 +113,44 @@ async function fetchLive() {
 /** Returns { at, source, stale, error?, areas: [{ name, days, river }] } */
 export async function getForecast() {
   if (isMock()) return { at: new Date().toISOString(), source: 'synthetic (mock mode)', stale: false, areas: mockData() };
+  return withRelayedRiver(await loadForecast());
+}
+
+// ---- River relay ----
+// GloFAS (flood-api.open-meteo.com) also rate-limits shared cloud IPs. A signed-in official's browser
+// can fetch it instead and relay it here (passcode-protected, validated, kept for 12 h).
+const RELAY_TTL_MS = 12 * 60 * 60 * 1000;
+let relay = null; // { at, byName: Map(name -> river) }
+
+export function needsRiverRelay(forecast) {
+  return !isMock() && !(forecast.areas || []).some((a) => a.river?.next?.length);
+}
+
+/** Validates and stores relayed river data. Returns the number of areas accepted. */
+export function acceptRiverRelay(items) {
+  if (!Array.isArray(items)) return 0;
+  const names = new Set(RISK_AREAS.map((a) => a.name));
+  const ok = (arr, max) => Array.isArray(arr) && arr.length <= max && arr.every((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 1e6);
+  const byName = new Map();
+  for (const it of items) {
+    if (!names.has(it?.name) || !ok(it.past, 14) || !ok(it.next, 14) || !it.next.length) continue;
+    if (!Array.isArray(it.dates) || it.dates.length !== it.next.length || !it.dates.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))) continue;
+    byName.set(it.name, { past: it.past, next: it.next, dates: it.dates });
+  }
+  if (byName.size) relay = { at: Date.now(), byName };
+  return byName.size;
+}
+
+function withRelayedRiver(data) {
+  if (!relay || Date.now() - relay.at > RELAY_TTL_MS || !needsRiverRelay(data)) return data;
+  return {
+    ...data,
+    source: data.source.replace('river data unavailable', 'GloFAS river discharge (relayed by official dashboard)'),
+    areas: data.areas.map((a) => ({ ...a, river: relay.byName.get(a.name) || a.river })),
+  };
+}
+
+async function loadForecast() {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.data;
   if (failure && Date.now() - failure.at < RETRY_MS) return failure.data; // don't hammer providers after a failure
   try {
@@ -137,6 +175,7 @@ let lastSource = '';
 
 export function _resetWeatherCache() {
   cache = null;
+  relay = null;
   failure = null;
   openMeteoBlockedUntil = 0;
 }

@@ -75,7 +75,7 @@ Issues the evaluation caught and fixed: an LLM writing Malayalam into the Hindi 
 ## Tests
 
 ```bash
-npm test        # 32 unit + API tests, offline (mock mode, no credits)
+npm test        # 33 unit + API tests, offline (mock mode, no credits)
 npm run eval    # live accuracy evaluation against Sarvam (~₹6)
 ```
 
