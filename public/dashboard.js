@@ -57,8 +57,9 @@ function askPasscode() {
     const input = m.el.querySelector('#pc');
     input.focus();
     const ok = async () => {
-      const res = await fetch('/api/admin/check', { headers: { 'x-admin-passcode': input.value } });
-      if (res.ok) { ls.set('kayal-pass', input.value); m.close(); updateLock(); resolve(true); }
+      const pass = input.value.trim();
+      const res = await fetch('/api/admin/check', { headers: { 'x-admin-passcode': pass } });
+      if (res.ok) { ls.set('kayal-pass', pass); m.close(); updateLock(); resolve(true); }
       else m.el.querySelector('#pc-err').textContent = res.status === 401 ? 'Wrong passcode.' : ((await res.json().catch(() => ({}))).error || 'Not available.');
     };
     m.el.querySelector('[data-ok]').onclick = ok;

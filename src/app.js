@@ -31,13 +31,14 @@ function rateLimit({ max, windowMs }) {
 
 /** Authority actions (status changes, alerts, briefs) need ADMIN_PASSCODE when it is set. */
 function requireAdmin(req, res, next) {
-  const expected = process.env.ADMIN_PASSCODE;
+  // Trim both sides: a stray space or newline pasted into a hosting dashboard must not lock officials out.
+  const expected = (process.env.ADMIN_PASSCODE || '').trim();
   if (!expected) {
     // Fail closed on a public deployment: nobody can broadcast alerts until a passcode is configured.
     if (process.env.NODE_ENV === 'production') return res.status(503).json({ error: 'Authority actions are disabled until ADMIN_PASSCODE is set on the server.' });
     return next();
   }
-  const given = String(req.get('x-admin-passcode') || '');
+  const given = String(req.get('x-admin-passcode') || '').trim();
   const a = crypto.createHash('sha256').update(given).digest();
   const b = crypto.createHash('sha256').update(expected).digest();
   if (crypto.timingSafeEqual(a, b)) return next();

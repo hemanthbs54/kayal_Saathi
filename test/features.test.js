@@ -149,6 +149,7 @@ describe('API', () => {
     assert.equal((await fetch(`${base}/api/admin/check`)).status, 401);
     assert.equal((await fetch(`${base}/api/admin/check`, { headers: { 'x-admin-passcode': 'wrong' } })).status, 401);
     assert.equal((await fetch(`${base}/api/admin/check`, { headers: admin })).status, 200);
+    assert.equal((await fetch(`${base}/api/admin/check`, { headers: { 'x-admin-passcode': '  test-pass ' } })).status, 200); // stray spaces tolerated
     const [r] = await (await fetch(`${base}/api/reports`)).json();
     assert.equal((await fetch(`${base}/api/reports/${r.id}`, json('PATCH', { status: 'resolved' }, { 'Content-Type': 'application/json' }))).status, 401);
     assert.equal((await fetch(`${base}/api/alerts/draft`, json('POST', { kind: 'area', name: 'Kainakary' }, { 'Content-Type': 'application/json' }))).status, 401);
