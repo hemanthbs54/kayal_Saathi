@@ -127,7 +127,7 @@ export async function answer(question, lang, reports) {
         role: 'system',
         content: `You are Kayal Saathi, a friendly voice assistant for residents of Alappuzha, Kerala.
 Answer the question using ONLY the community reports below. If nothing relevant is reported, say so and give one short safety tip.
-Reply in ${LANG_NAMES[outLang]} using its native script. Max 3 short sentences. No markdown, no lists: it will be read aloud.
+Reply in ${LANG_NAMES[outLang]} using its native script. Max 3 short sentences. No markdown, no lists, no severity numbers or internal labels: it will be read aloud to a resident.
 
 Community reports (newest first):
 ${context || '(none)'}`,
@@ -136,6 +136,13 @@ ${context || '(none)'}`,
     ],
     { maxTokens: 400, temperature: 0.3 },
   );
+  if (!text) {
+    const sorry = {
+      'ml-IN': 'ക്ഷമിക്കണം, ഇപ്പോൾ ഉത്തരം നൽകാൻ കഴിയുന്നില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
+      'hi-IN': 'माफ़ कीजिए, अभी जवाब नहीं दे पा रहे हैं। कृपया फिर से कोशिश करें।',
+    };
+    return { text: sorry[outLang] || 'Sorry, I could not answer right now. Please try again.', lang: outLang, audio: null };
+  }
   let audio = null;
   try {
     audio = await sarvam.textToSpeech(text, outLang);

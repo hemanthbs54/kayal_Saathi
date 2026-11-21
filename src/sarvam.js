@@ -53,8 +53,6 @@ export async function speechToText(buffer, mimetype, { languageCode = 'unknown',
   return { transcript: (b.transcript || '').trim(), languageCode: b.language_code || null };
 }
 
-let reasoningSupported = true;
-
 /** Chat completion with sarvam-105b. Returns assistant text. */
 export async function chat(messages, { maxTokens = 700, temperature = 0.2 } = {}) {
   const payload = {
@@ -62,24 +60,16 @@ export async function chat(messages, { maxTokens = 700, temperature = 0.2 } = {}
     messages,
     temperature,
     max_tokens: maxTokens,
+    // Verified live: null disables thinking (fast, cheap). Omitting it makes the model reason by
+    // default and burn the whole token budget, returning content: null. 'none' is rejected (400).
+    reasoning_effort: null,
   };
-  if (reasoningSupported) payload.reasoning_effort = 'none';
   const headers = {
     'api-subscription-key': apiKey(),
     Authorization: `Bearer ${apiKey()}`,
     'Content-Type': 'application/json',
   };
-  let b;
-  try {
-    b = await call('/v1/chat/completions', { method: 'POST', headers, body: JSON.stringify(payload) });
-  } catch (e) {
-    // If the reasoning flag is rejected, retry once without it.
-    if (reasoningSupported && (e.status === 400 || e.status === 422)) {
-      reasoningSupported = false;
-      delete payload.reasoning_effort;
-      b = await call('/v1/chat/completions', { method: 'POST', headers, body: JSON.stringify(payload) });
-    } else throw e;
-  }
+  const b = await call('/v1/chat/completions', { method: 'POST', headers, body: JSON.stringify(payload) });
   usage.chat++;
   usage.chatTokens += b.usage?.total_tokens || 0;
   const content = b.choices?.[0]?.message?.content || '';
