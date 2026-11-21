@@ -43,6 +43,17 @@ Hindi support matters here: Alappuzha has a large migrant-worker population, and
 | `POST /v1/chat/completions` (`sarvam-105b`) | Translation + triage into structured JSON; grounded Q&A |
 | `POST /text-to-speech` (`bulbul:v3`, mp3) | Speaking answers back in the user's language |
 
+## Measured accuracy
+
+`npm run eval` speaks 10 realistic reports (7 Malayalam, 1 Hindi, 1 Tamil, 1 English) with Sarvam TTS, runs them through the real pipeline, and checks language, category, place and severity against known answers. Q&A answers are translated back to English so non-Malayalam speakers can check them.
+
+| Run | Language | Category | Place | Fully correct |
+|---|---|---|---|---|
+| First version | 10/10 | 10/10 | 7/10 | 7/10 |
+| + Malayalam place-name hints for STT, local gazetteer in the prompt, fuzzy matching, temperature 0 | 10/10 | 10/10 | **10/10** | **10/10** |
+
+Place names were the weak spot: speech recognition heard *Nedumudi* as "Nemudy" and *Mancombu* as "Manpump". Now the app recovers them.
+
 ## Run it
 
 ```bash
@@ -50,6 +61,7 @@ npm install
 cp .env.example .env      # paste your SARVAM_API_KEY (leave empty for offline demo mode)
 npm start                 # http://localhost:3000   dashboard: http://localhost:3000/dashboard
 npm test                  # end-to-end API tests in mock mode (uses no credits)
+npm run eval              # live accuracy check against Sarvam (~₹5 of credits)
 ```
 
 Requires Node 22+. No build step, no database server: one Express app and a JSON file store.

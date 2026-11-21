@@ -1,6 +1,6 @@
 // Report triage + question answering on top of Sarvam (with an offline mock mode for tests/demos).
 import * as sarvam from './sarvam.js';
-import { KEYTERMS } from './places.js';
+import { KEYTERMS, PLACES } from './places.js';
 
 export const CATEGORIES = {
   waste: { en: 'Waste dumping', ml: 'മാലിന്യം' },
@@ -54,7 +54,11 @@ export function heuristicTriage(text) {
 }
 
 const TRIAGE_PROMPT = `You triage community reports from residents of Alappuzha (Kerala backwaters, Kuttanad).
-Reports may be in Malayalam, Hindi, Tamil, English or mixed. Return ONLY a JSON object, no prose:
+Reports may be in Malayalam, Hindi, Tamil, English or mixed. They come from speech recognition, so words
+and especially place names may be misspelled: interpret them in context (e.g. a blocked "train" with
+rainwater on the road is a blocked drain). Known local places: ${PLACES.map((p) => `${p.name} (${p.ml})`).join(', ')}.
+If a mentioned place sounds like one of these, use that exact English name.
+Return ONLY a JSON object, no prose:
 {"title": "<English title, max 8 words>",
  "english": "<faithful English translation of the report>",
  "category": "waste" | "flood" | "blocked_canal" | "water_quality" | "other",
@@ -81,7 +85,7 @@ export async function triage(transcript, languageCode) {
   const raw = await sarvam.chat([
     { role: 'system', content: TRIAGE_PROMPT },
     { role: 'user', content: `Language: ${LANG_NAMES[languageCode] || 'unknown'}\nReport: ${transcript}` },
-  ]);
+  ], { temperature: 0 });
   const j = parseJson(raw) || {};
   const category = CATEGORIES[j.category] ? j.category : fallback.category;
   const sev = Number.parseInt(j.severity, 10);
@@ -126,7 +130,9 @@ export async function answer(question, lang, reports) {
       {
         role: 'system',
         content: `You are Kayal Saathi, a friendly voice assistant for residents of Alappuzha, Kerala.
-Answer the question using ONLY the community reports below. If nothing relevant is reported, say so and give one short safety tip.
+Answer the question using ONLY the community reports below. Never add facts that are not in the reports
+(e.g. do not call a blocked canal "flooded"). If nothing relevant is reported, say so and give one short safety tip.
+The question comes from speech recognition, so place names may be misspelled: match them to the closest reported place.
 Reply in ${LANG_NAMES[outLang]} using its native script. Max 3 short sentences. No markdown, no lists, no severity numbers or internal labels: it will be read aloud to a resident.
 
 Community reports (newest first):

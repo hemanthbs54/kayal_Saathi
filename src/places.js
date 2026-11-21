@@ -23,15 +23,46 @@ export const PLACES = [
   { name: 'Vembanad Lake', ml: 'വേമ്പനാട്', lat: 9.58, lng: 76.37, aliases: ['vembanad'] },
 ];
 
-export const KEYTERMS = ['Alappuzha', ...PLACES.map((p) => p.name)];
+// English + Malayalam spellings: Saaras returns Malayalam script, so both help recognition.
+export const KEYTERMS = ['Alappuzha', 'ആലപ്പുഴ', ...PLACES.flatMap((p) => [p.name, p.ml])].slice(0, 50);
+
+function editDistance(a, b) {
+  const dp = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = dp[j];
+      dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+  }
+  return dp[b.length];
+}
+
+/** Tolerate speech-recognition misspellings like "Manancherry" or "Nedumudy" (Latin script words). */
+function fuzzyPlace(t) {
+  const words = t.match(/[a-z]{5,}/g) || [];
+  let best = null;
+  for (const p of PLACES) {
+    const name = p.name.toLowerCase().split(' ')[0];
+    if (name.length < 6) continue;
+    for (const w of words) {
+      const d = editDistance(w, name);
+      if (d <= Math.floor(name.length / 4) && (!best || d < best.d)) best = { p, d };
+    }
+  }
+  return best?.p || null;
+}
 
 export function matchPlace(text) {
   if (!text) return null;
   const t = text.toLowerCase();
-  // Exact names first (so "Pathiramanal jetty" doesn't match the generic "jetty" alias), then aliases.
+  // Exact names first (so "Pathiramanal jetty" doesn't match the generic "jetty" alias), then aliases, then fuzzy.
   return (
     PLACES.find((p) => t.includes(p.name.toLowerCase()) || t.includes(p.ml)) ||
     PLACES.find((p) => p.aliases.some((a) => t.includes(a))) ||
+    fuzzyPlace(t) ||
     null
   );
 }

@@ -120,6 +120,9 @@ test('helpers', () => {
   assert.equal(heuristicTriage('plastic waste near jetty').category, 'waste');
   assert.equal(heuristicTriage('ചമ്പക്കുളം തോട്ടിൽ പോള').category, 'blocked_canal');
   assert.equal(matchPlace('oil near Pathiramanal island jetty').name, 'Pathiramanal');
+  assert.equal(matchPlace('Manancherry junction').name, 'Mannancherry');
+  assert.equal(matchPlace('dead fish in Nedumudy').name, 'Nedumudi');
+  assert.equal(matchPlace('the road near my house'), null);
   assert.equal(answerLanguage('unknown'), 'ml-IN');
   assert.equal(answerLanguage('ur-IN'), 'en-IN');
 });
