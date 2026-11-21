@@ -2,6 +2,8 @@
 
 **Report backwater waste and flooding in Alappuzha by voice: speak Malayalam, snap a photo, done.**
 
+**🔗 Live demo: https://kayal-saathi.onrender.com** · Dashboard: https://kayal-saathi.onrender.com/dashboard
+
 Built solo for **HackaThoni 2026: The Houseboat Hackathon** (Alappuzha, 21–22 Nov).
 Primary track: **02 Beyond English (Sarvam)**. It also covers **01 The Alappuzha Challenge** and **03 Beyond the Screen** (photo + GPS).
 
