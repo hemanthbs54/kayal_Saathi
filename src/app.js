@@ -3,7 +3,7 @@ import path from 'node:path';
 import express from 'express';
 import multer from 'multer';
 import { createStore } from './store.js';
-import { transcribe, triage, answer, draftAlert, voiceAlert, situationBrief, detectScript, scriptProblems, isMock, CATEGORIES } from './ai.js';
+import { transcribe, triage, heuristicTriage, answer, draftAlert, voiceAlert, situationBrief, detectScript, scriptProblems, isMock, CATEGORIES } from './ai.js';
 import { matchPlace, ALAPPUZHA_CENTER, distanceKm } from './places.js';
 import { clusterReports, incidentForReport } from './incidents.js';
 import { getForecast, acceptRiverRelay, needsRiverRelay } from './weather.js';
@@ -44,7 +44,8 @@ function capturedTime(v) {
   return new Date(t).toISOString();
 }
 
-export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateLimit = 30 } = {}) {
+// Limits are per IP. At a venue everyone shares one public IP, so they must be generous.
+export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateLimit = 150 } = {}) {
   const store = createStore(dataDir, { seed });
   fs.mkdirSync(path.join(uploadsDir, 'alerts'), { recursive: true });
 
@@ -54,7 +55,7 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
 
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 2 } });
   const aiLimit = rateLimit({ max: aiRateLimit, windowMs: 10 * 60 * 1000 });
-  const adminLimit = rateLimit({ max: 60, windowMs: 10 * 60 * 1000 });
+  const adminLimit = rateLimit({ max: 150, windowMs: 10 * 60 * 1000 });
 
   const incidents = () => clusterReports(store.list());
   const risk = async () => computeRisk(await getForecast(), store.list());
@@ -107,7 +108,13 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
       let lang = typed ? detectScript(typed) : null;
       let source = 'text';
       if (audio) {
-        const stt = await transcribe(audio.buffer, audio.mimetype);
+        let stt;
+        try {
+          stt = await transcribe(audio.buffer, audio.mimetype);
+        } catch (e) {
+          console.warn('STT failed:', e.message);
+          return res.status(503).json({ error: 'ശബ്ദം ഇപ്പോൾ പ്രോസസ്സ് ചെയ്യാൻ കഴിയുന്നില്ല, ദയവായി ടൈപ്പ് ചെയ്യുക · Voice could not be processed right now. Please type your report instead.' });
+        }
         transcript = stt.transcript;
         lang = stt.languageCode || 'unknown';
         source = 'voice';
@@ -116,7 +123,15 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
         return res.status(400).json({ error: 'Could not hear anything. Please speak again or type your report.' });
       }
 
-      const t = await triage(transcript, lang);
+      let t;
+      try {
+        t = await triage(transcript, lang);
+      } catch (e) {
+        // A resident's report must never be lost because the AI step failed: fall back to keyword triage.
+        console.warn('Triage failed, using keyword fallback:', e.message);
+        const h = heuristicTriage(transcript);
+        t = { ...h, title: `${CATEGORIES[h.category].en} reported`, english: transcript, place: '' };
+      }
 
       // Location: device GPS first, else a known place mentioned in the report, else city centre.
       let lat = num(req.body?.lat);

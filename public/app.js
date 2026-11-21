@@ -211,22 +211,49 @@ function toast(msg) {
 
 // ---------- photo ----------
 let photoBlob = null;
+// Decode any photo the phone gives us (camera JPEG with EXIF rotation, PNG, WebP, and HEIC where the
+// browser can display it, e.g. Safari) and re-encode it as a small, upright JPEG.
+async function decodeImage(file) {
+  try {
+    return await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      return img;
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  }
+}
 async function downscale(file, max = 1280) {
-  const img = await createImageBitmap(file);
-  const scale = Math.min(1, max / Math.max(img.width, img.height));
+  const img = await decodeImage(file);
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const scale = Math.min(1, max / Math.max(w, h));
   const c = document.createElement('canvas');
-  c.width = Math.round(img.width * scale);
-  c.height = Math.round(img.height * scale);
+  c.width = Math.round(w * scale);
+  c.height = Math.round(h * scale);
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-  return new Promise((res) => c.toBlob(res, 'image/jpeg', 0.8));
+  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('encode failed'))), 'image/jpeg', 0.8));
 }
 $('#photo').addEventListener('change', async (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
-  try { photoBlob = await downscale(f); } catch { photoBlob = f; }
   const prev = $('#photo-preview');
-  prev.src = URL.createObjectURL(photoBlob);
-  prev.classList.add('show');
+  try {
+    photoBlob = await downscale(f);
+    prev.src = URL.createObjectURL(photoBlob);
+    prev.classList.add('show');
+  } catch {
+    // Never send a format the server can't show; tell the person instead of dropping it silently.
+    photoBlob = null;
+    prev.classList.remove('show');
+    e.target.value = '';
+    toast('📷 ഈ ഫോട്ടോ ഫോർമാറ്റ് പിന്തുണയ്ക്കുന്നില്ല · Photo format not supported. Please take it again with the camera.');
+  }
 });
 
 // ---------- report ----------
@@ -300,6 +327,7 @@ sendBtn.addEventListener('click', async () => {
     if (!res.ok) throw new Error(r.error || 'Failed');
     const [ml, en, color] = CAT[r.category] || CAT.other;
     const others = (r.incident?.confirmations || 1) - 1;
+    const photoLost = Boolean(item.photo) && !r.photo;
     out.className = 'card result';
     out.innerHTML = `
       <div class="row"><span class="tag" style="background:${color}">${esc(ml)} · ${esc(en)}</span>
@@ -307,6 +335,7 @@ sendBtn.addEventListener('click', async () => {
       <p class="ml">“${esc(r.transcript)}”</p>
       <p class="en">${esc(r.english)}</p>
       ${others > 0 ? `<div class="confirm-line">👥 ${others} പേർ കൂടി ഇത് റിപ്പോർട്ട് ചെയ്തു · ${others} other resident${others > 1 ? 's' : ''} reported this too, so it is now a confirmed incident</div>` : ''}
+      ${photoLost ? '<div class="small error" style="margin-top:8px">📷 The photo could not be saved; the report was sent without it.</div>' : ''}
       <div class="small muted" style="margin-top:8px">📍 ${esc(r.place || 'Your location')} · ✅ നന്ദി! റിപ്പോർട്ട് പഞ്ചായത്തിന് അയച്ചു · Sent to the authority dashboard</div>`;
     resetForm();
   } catch (e) {
