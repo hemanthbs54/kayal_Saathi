@@ -75,7 +75,7 @@ Issues the evaluation caught and fixed: an LLM writing Malayalam into the Hindi 
 ## Tests
 
 ```bash
-npm test        # 30 unit + API tests, offline (mock mode, no credits)
+npm test        # 32 unit + API tests, offline (mock mode, no credits)
 npm run eval    # live accuracy evaluation against Sarvam (~₹6)
 ```
 
@@ -100,7 +100,7 @@ src/app.js         routes: reports, incidents, risk, alerts, brief, ask (+ passc
 src/sarvam.js      Sarvam client: STT, chat, translate, TTS + usage counters
 src/ai.js          triage, grounded Q&A, alert drafting + translation checks, brief
 src/risk.js        explainable flood-risk index
-src/weather.js     Open-Meteo rain + GloFAS river forecasts (cached, fail-safe)
+src/weather.js     Open-Meteo / MET Norway rain + GloFAS river forecasts (cached, fallback, fail-safe)
 src/incidents.js   duplicate-report clustering
 src/places.js      Alappuzha gazetteer: coordinates, terrain, ml/hi names, place protection
 public/            resident PWA (app.js, offline.js, sw.js) + Situation Room (dashboard.js)

@@ -42,20 +42,53 @@ async function getJson(url) {
   return res.json();
 }
 
+// MET Norway (api.met.no): independent second rainfall source. Used when Open-Meteo is unavailable,
+// e.g. rate-limited (HTTP 429) on shared cloud egress IPs. Hourly/6-hourly amounts are summed per IST day.
+const MET_UA = { 'User-Agent': 'kayal-saathi-hackathon-demo/1.0' };
+async function metDays(lat, lng) {
+  const res = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat.toFixed(3)}&lon=${lng.toFixed(3)}`, { headers: MET_UA, signal: AbortSignal.timeout(12_000) });
+  if (!res.ok) throw new Error(`api.met.no ${res.status}`);
+  const ts = (await res.json()).properties?.timeseries || [];
+  const sums = {};
+  for (const t of ts) {
+    const p1 = t.data?.next_1_hours?.details?.precipitation_amount;
+    const p6 = t.data?.next_6_hours?.details?.precipitation_amount;
+    const day = new Date(Date.parse(t.time) + 5.5 * 36e5).toISOString().slice(0, 10);
+    sums[day] = (sums[day] || 0) + (p1 ?? p6 ?? 0);
+  }
+  return Array.from({ length: 7 }, (_, d) => ({ date: isoDay(d), rain: Math.round((sums[isoDay(d)] || 0) * 10) / 10, prob: null }));
+}
+
+let openMeteoBlockedUntil = 0;
+
 async function fetchLive() {
   const lat = RISK_AREAS.map((a) => a.lat).join(',');
   const lng = RISK_AREAS.map((a) => a.lng).join(',');
+  const skipOM = Date.now() < openMeteoBlockedUntil;
   const [rain, flood] = await Promise.allSettled([
-    getJson(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=precipitation_sum,precipitation_probability_max&forecast_days=7&timezone=Asia%2FKolkata`),
+    skipOM ? Promise.reject(new Error('api.open-meteo.com rate-limited (skipping)')) : getJson(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=precipitation_sum,precipitation_probability_max&forecast_days=7&timezone=Asia%2FKolkata`),
     getJson(`https://flood-api.open-meteo.com/v1/flood?latitude=${lat}&longitude=${lng}&daily=river_discharge&past_days=7&forecast_days=7`),
   ]);
-  if (rain.status === 'rejected' && flood.status === 'rejected') throw new Error(`weather unavailable: ${rain.reason?.message}`);
-  const rainArr = rain.status === 'fulfilled' ? [].concat(rain.value) : null;
+  if (rain.status === 'rejected' && /429/.test(rain.reason?.message)) openMeteoBlockedUntil = Date.now() + 60 * 60 * 1000;
+
+  let rainArr = rain.status === 'fulfilled' ? [].concat(rain.value).map((x) => x.daily) : null;
+  let rainSource = 'Open-Meteo rainfall';
+  if (!rainArr) {
+    const met = await Promise.allSettled(RISK_AREAS.map((a) => metDays(a.lat, a.lng)));
+    if (met.some((m) => m.status === 'fulfilled')) {
+      rainArr = met.map((m) => (m.status === 'fulfilled'
+        ? { time: m.value.map((d) => d.date), precipitation_sum: m.value.map((d) => d.rain), precipitation_probability_max: m.value.map(() => null) }
+        : null));
+      rainSource = 'MET Norway rainfall (Open-Meteo unavailable)';
+    }
+  }
   const floodArr = flood.status === 'fulfilled' ? [].concat(flood.value) : null;
+  if (!rainArr && !floodArr) throw new Error(`weather unavailable: ${rain.reason?.message}; ${flood.reason?.message}`);
   const today = isoDay(0);
+  lastSource = `${rainArr ? rainSource : 'rainfall unavailable'} + ${floodArr ? 'GloFAS river discharge' : 'river data unavailable'}`;
 
   return RISK_AREAS.map((a, i) => {
-    const r = rainArr?.[i]?.daily;
+    const r = rainArr?.[i];
     const f = floodArr?.[i]?.daily;
     let river = null;
     if (f?.time) {
@@ -81,18 +114,29 @@ async function fetchLive() {
 export async function getForecast() {
   if (isMock()) return { at: new Date().toISOString(), source: 'synthetic (mock mode)', stale: false, areas: mockData() };
   if (cache && Date.now() - cache.at < TTL_MS) return cache.data;
+  if (failure && Date.now() - failure.at < RETRY_MS) return failure.data; // don't hammer providers after a failure
   try {
     const areas = await fetchLive();
-    const data = { at: new Date().toISOString(), source: 'Open-Meteo forecast + GloFAS river discharge', stale: false, areas };
+    const data = { at: new Date().toISOString(), source: lastSource, stale: false, areas };
     cache = { at: Date.now(), data };
+    failure = null;
     return data;
   } catch (e) {
     console.warn('Forecast fetch failed:', e.message);
-    if (cache) return { ...cache.data, stale: true, error: e.message };
-    return { at: new Date().toISOString(), source: 'unavailable', stale: true, error: e.message, areas: [] };
+    const data = cache
+      ? { ...cache.data, stale: true, error: e.message }
+      : { at: new Date().toISOString(), source: 'unavailable', stale: true, error: e.message, areas: [] };
+    failure = { at: Date.now(), data };
+    return data;
   }
 }
 
+const RETRY_MS = 5 * 60 * 1000;
+let failure = null;
+let lastSource = '';
+
 export function _resetWeatherCache() {
   cache = null;
+  failure = null;
+  openMeteoBlockedUntil = 0;
 }
