@@ -76,6 +76,17 @@ export async function chat(messages, { maxTokens = 700, temperature = 0.2 } = {}
   return content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 }
 
+/** Text translation with mayura:v1 (purpose-built; keeps meaning identical across languages). */
+export async function translate(text, target, source = 'en-IN', model = 'mayura:v1') {
+  const b = await call('/translate', {
+    method: 'POST',
+    headers: { 'api-subscription-key': apiKey(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input: text.slice(0, 1000), source_language_code: source, target_language_code: target, model, ...(model === 'mayura:v1' ? { mode: 'formal' } : {}) }),
+  });
+  usage.translate = (usage.translate || 0) + 1;
+  return (b.translated_text || '').trim();
+}
+
 /** Text -> speech with bulbul:v3. Returns base64 mp3 or null. */
 export async function textToSpeech(text, languageCode = 'ml-IN') {
   const clipped = text.slice(0, 2500);

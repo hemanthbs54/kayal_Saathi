@@ -90,3 +90,35 @@ textarea { width: 100%; min-height: 80px; margin-top: 8px; padding: 10px; border
 .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .examples button { font-size: .8rem; border: 1px dashed var(--line); background: transparent; color: var(--muted); padding: 6px 10px; border-radius: 999px; }
 .footer-link { text-align: center; font-size: .85rem; margin-top: 18px; }
+
+/* ---------- Risk levels (status palette: always icon + label, never colour alone) ---------- */
+:root { --lv-low: #0ca30c; --lv-moderate: #fab219; --lv-high: #ec835a; --lv-severe: #d03b3b; }
+.lv { display: inline-flex; align-items: center; gap: 5px; font-size: .75rem; font-weight: 700; padding: 2px 8px 2px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; }
+.lv::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--lvc); }
+.lv.low { --lvc: var(--lv-low); } .lv.moderate { --lvc: var(--lv-moderate); } .lv.high { --lvc: var(--lv-high); } .lv.severe { --lvc: var(--lv-severe); }
+
+/* ---------- Resident: alerts, risk, offline ---------- */
+.alert-card { border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; background: color-mix(in srgb, var(--lv-severe) 10%, var(--surface)); border: 2px solid var(--lv-severe); box-shadow: var(--shadow); }
+.alert-card.moderate { border-color: var(--lv-moderate); background: color-mix(in srgb, var(--lv-moderate) 12%, var(--surface)); }
+.alert-card.high { border-color: var(--lv-high); background: color-mix(in srgb, var(--lv-high) 12%, var(--surface)); }
+.alert-card h3 { margin: 0 0 6px; font-size: .95rem; display: flex; gap: 8px; align-items: center; }
+.alert-card .msg { font-size: 1.05rem; line-height: 1.5; margin: 0 0 10px; }
+.alert-card .langs { display: flex; gap: 6px; flex-wrap: wrap; }
+.alert-card .langs button { font-size: .85rem; padding: 7px 11px; }
+.alert-card .langs button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.risk-mini { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin-bottom: 12px; font-size: .88rem; }
+.risk-mini b { display: block; }
+.offline-bar { background: #fef3c7; color: #78350f; border: 1px solid #fcd34d; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-size: .88rem; font-weight: 600; }
+.confirm-line { margin-top: 8px; font-size: .88rem; font-weight: 600; color: var(--brand); }
+
+/* ---------- Shared: modal + toast ---------- */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; padding: 16px; z-index: 2000; }
+.modal { background: var(--surface); color: var(--ink); border-radius: var(--radius); width: min(640px, 100%); max-height: 90dvh; overflow: auto; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.modal h2 { margin: 0 0 4px; font-size: 1.15rem; }
+.modal label { display: block; font-size: .8rem; font-weight: 700; color: var(--muted); margin: 12px 0 4px; }
+.modal textarea, .modal input, .modal select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
+.modal textarea { min-height: 70px; margin: 0; }
+.modal .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; z-index: 3000; font-weight: 600; box-shadow: var(--shadow); max-width: calc(100% - 32px); }
+.brief-text { white-space: pre-wrap; line-height: 1.55; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.risk-mini > div { flex: 1 1 200px; min-width: 0; } .risk-mini .lv { flex-shrink: 0; }

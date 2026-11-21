@@ -3,40 +3,70 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kayal Saathi Dashboard</title>
+  <title>Kayal Saathi Situation Room</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/style.css" />
   <style>
     body { height: 100dvh; display: flex; flex-direction: column; }
-    .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-    .stats { display: flex; gap: 10px; flex-wrap: wrap; }
-    .stat { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; min-width: 96px; }
-    .stat b { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
-    .stat span { font-size: .72rem; color: var(--muted); }
-    .stat.alert b { color: var(--danger); }
-    .layout { flex: 1; display: grid; grid-template-columns: 380px 1fr; min-height: 0; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    .top-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .stats { display: flex; gap: 8px; flex-wrap: wrap; }
+    .stat { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 5px 12px; min-width: 92px; }
+    .stat b { display: block; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+    .stat span { font-size: .7rem; color: var(--muted); }
+    .layout { flex: 1; display: grid; grid-template-columns: 400px 1fr; min-height: 0; }
     aside { overflow-y: auto; border-right: 1px solid var(--line); background: var(--bg); padding: 12px; }
-    #map { height: 100%; min-height: 320px; }
+    .mapwrap { position: relative; min-height: 320px; }
+    #map { position: absolute; inset: 0; }
+    .layer-toggle { position: absolute; top: 10px; right: 10px; z-index: 500; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: .8rem; box-shadow: var(--shadow); display: grid; gap: 4px; }
+    .layer-toggle label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+    .ptabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--surface); border: 1px solid var(--line); padding: 4px; border-radius: 12px; margin-bottom: 12px; }
+    .ptabs button { border: 0; background: transparent; padding: 8px 4px; border-radius: 9px; color: var(--muted); font-weight: 700; font-size: .85rem; }
+    .ptabs button[aria-selected="true"] { background: var(--brand); color: var(--brand-ink); }
     .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-    .chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 10px; font-size: .8rem; display: inline-flex; align-items: center; gap: 6px; }
+    .chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 10px; font-size: .78rem; display: inline-flex; align-items: center; gap: 6px; }
     .chip[aria-pressed="false"] { opacity: .45; }
     .chip i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
     .item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
-    .item:hover { border-color: var(--brand); border-left-color: var(--c); }
+    .item:hover, .item:focus-visible { border-color: var(--brand); border-left-color: var(--c); outline: none; }
     .item.new { animation: flash 2.5s ease-out; }
     @keyframes flash { 0% { background: color-mix(in srgb, var(--accent) 25%, var(--surface)); } 100% { background: var(--surface); } }
-    .item h3 { font-size: .95rem; margin: 0 0 2px; }
-    .item .meta { font-size: .75rem; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
-    .badge { font-size: .7rem; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); }
+    .item h3 { font-size: .93rem; margin: 0 0 3px; }
+    .item .meta { font-size: .74rem; color: var(--muted); display: flex; gap: 6px 8px; flex-wrap: wrap; align-items: center; }
+    .badge { font-size: .7rem; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
     .badge.open { color: var(--danger); } .badge.in_progress { color: #b45309; } .badge.resolved { color: #15803d; }
-    .popup img { width: 100%; border-radius: 8px; margin: 6px 0; }
-    .popup .ml { font-size: .95rem; }
-    .popup select { margin-top: 6px; width: 100%; padding: 4px; }
-    .leaflet-popup-content { width: 260px !important; }
+    .badge.count { font-weight: 700; color: var(--ink); }
+    .badge.ok { color: #15803d; font-weight: 700; }
     .sample { font-size: .65rem; color: var(--muted); }
-    @media (max-width: 760px) {
-      .layout { grid-template-columns: 1fr; grid-template-rows: 50vh auto; }
+    .risk-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+    .risk-row .score { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; }
+    .risk-row .why { grid-column: 1 / -1; font-size: .75rem; color: var(--muted); }
+    .detail { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+    .detail h3 { margin: 0; font-size: 1.05rem; }
+    .detail ul { margin: 8px 0; padding-left: 18px; font-size: .85rem; }
+    .comp { display: grid; grid-template-columns: 70px 1fr 40px; gap: 6px; align-items: center; font-size: .78rem; margin: 3px 0; }
+    .comp .track { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+    .comp .fill { height: 100%; background: var(--ink); border-radius: 0 4px 4px 0; opacity: .75; }
+    .comp b { text-align: right; font-variant-numeric: tabular-nums; }
+    .chart-title { font-size: .78rem; font-weight: 700; margin: 12px 0 2px; }
+    .chart-sub { font-size: .7rem; color: var(--muted); margin-bottom: 4px; }
+    svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+    svg.chart text { fill: var(--muted); font-size: 10px; font-family: inherit; }
+    svg.chart .grid { stroke: var(--line); stroke-width: 1; }
+    .tip { position: fixed; pointer-events: none; z-index: 4000; background: var(--ink); color: var(--bg); font-size: .75rem; padding: 6px 9px; border-radius: 8px; white-space: nowrap; }
+    .disclaimer { font-size: .7rem; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+    .popup img { width: 100%; border-radius: 8px; margin: 6px 0; }
+    .popup .rep { border-top: 1px solid var(--line); padding-top: 6px; margin-top: 6px; }
+    .popup .ml { font-size: .92rem; }
+    .popup select { margin-top: 8px; width: 100%; padding: 5px; }
+    .popup .btn { margin-top: 8px; width: 100%; justify-content: center; padding: 8px; font-size: .85rem; }
+    .leaflet-popup-content { width: 280px !important; max-height: 340px; overflow-y: auto; }
+    .count-icon { background: var(--ink); color: var(--bg); border: 2px solid #fff; border-radius: 999px; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+    .alert-item .msg { font-size: .85rem; margin: 6px 0; }
+    .lock { font-size: .78rem; }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; grid-template-rows: 55vh auto; }
       aside { order: 2; border-right: 0; }
     }
   </style>
@@ -45,22 +75,48 @@
   <div class="top">
     <div class="brand">
       <img class="logo" src="/favicon.svg" alt="" />
-      <div><h1>Kayal Saathi · Authority Dashboard</h1><p>Live citizen reports from Alappuzha backwaters</p></div>
+      <div><h1>Kayal Saathi · Situation Room</h1><p>Resident reports + live rain &amp; river forecasts · Alappuzha</p></div>
     </div>
-    <div class="stats">
-      <div class="stat"><b id="s-open">0</b><span>Open reports</span></div>
-      <div class="stat alert"><b id="s-high">0</b><span>High severity (4–5)</span></div>
-      <div class="stat"><b id="s-24h">0</b><span>Last 24 hours</span></div>
-      <div class="stat"><b id="s-lang">0</b><span>Languages heard</span></div>
+    <div class="top-right">
+      <div class="stats">
+        <div class="stat"><b id="s-open">–</b><span>Open incidents</span></div>
+        <div class="stat"><b id="s-verified">–</b><span>Confirmed (2+ reports or photo)</span></div>
+        <div class="stat"><b id="s-risk">–</b><span>Areas at high flood risk</span></div>
+        <div class="stat"><b id="s-alerts">–</b><span>Alerts sent (24 h)</span></div>
+        <div class="stat"><b id="s-lang">–</b><span>Languages heard</span></div>
+      </div>
+      <button class="btn primary" id="brief-btn">📋 Situation brief</button>
+      <button class="btn lock" id="lock-btn" title="Authority passcode">🔒</button>
     </div>
   </div>
   <div class="layout">
     <aside>
-      <div class="filters" id="cat-filters"></div>
-      <div class="filters" id="status-filters"></div>
-      <div id="list"></div>
+      <nav class="ptabs" role="tablist">
+        <button role="tab" aria-selected="true" data-p="incidents">Incidents</button>
+        <button role="tab" aria-selected="false" data-p="risk">Flood risk</button>
+        <button role="tab" aria-selected="false" data-p="alerts">Alerts</button>
+      </nav>
+      <section id="p-incidents">
+        <div class="filters" id="cat-filters"></div>
+        <div class="filters" id="status-filters"></div>
+        <div id="inc-list"></div>
+      </section>
+      <section id="p-risk" class="hidden">
+        <div id="risk-detail"></div>
+        <div id="risk-list"></div>
+        <p class="disclaimer" id="risk-disclaimer"></p>
+      </section>
+      <section id="p-alerts" class="hidden">
+        <div id="alert-list"></div>
+      </section>
     </aside>
-    <div id="map"></div>
+    <div class="mapwrap">
+      <div id="map"></div>
+      <div class="layer-toggle">
+        <label><input type="checkbox" id="lyr-inc" checked /> Incidents</label>
+        <label><input type="checkbox" id="lyr-risk" checked /> Flood-risk zones</label>
+      </div>
+    </div>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/dashboard.js"></script>

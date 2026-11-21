@@ -1,102 +1,120 @@
 # കായൽ സാഥി · Kayal Saathi
 
-**Report backwater waste and flooding in Alappuzha by voice: speak Malayalam, snap a photo, done.**
+**A voice-first flood and backwater situation room for Alappuzha. Residents report in Malayalam (or Hindi, Tamil, English) by voice. AI combines their reports with live rain and river forecasts. Officials send verified voice alerts back to residents' phones in their own language.**
 
-**🔗 Live demo: https://kayal-saathi.onrender.com** · Dashboard: https://kayal-saathi.onrender.com/dashboard
+**🔗 Live demo: https://kayal-saathi.onrender.com** · Situation Room: https://kayal-saathi.onrender.com/dashboard
 
 Built solo for **HackaThoni 2026: The Houseboat Hackathon** (Alappuzha, 21–22 Nov).
-Primary track: **02 Beyond English (Sarvam)**. It also covers **01 The Alappuzha Challenge** and **03 Beyond the Screen** (photo + GPS).
+Primary track: **02 Beyond English (Sarvam)**. It also covers **01 The Alappuzha Challenge** (floods, backwater waste, livelihoods) and **03 Beyond the Screen** (voice, camera, GPS, offline).
 
 ---
 
 ## The problem
 
-The people who see backwater problems first are residents, fishers, houseboat crews and paddy farmers in Kuttanad: plastic piling up at jetties, water hyacinth choking canals, sewage from boats, water entering homes. Many of them are elderly or more comfortable in Malayalam than English. Reporting today means typing into an English form, so most problems go unreported until they become emergencies.
+Much of Kuttanad is farmed **below sea level** behind earthen bunds. When rain and rising rivers combine, the first warning signs are seen by residents, fishers and houseboat crews: water entering homes, a weak bund, a canal choked with water hyacinth. Two gaps stop that information from saving anyone:
 
-## The solution
+1. **Up:** reporting means typing in English on a form, so elderly people, low-literacy residents and Hindi-speaking migrant workers mostly don't report.
+2. **Down:** official warnings arrive as generic text, not as a voice message in your language about *your* village.
 
-| Resident (phone) | Authority (dashboard) |
-|---|---|
-| Tap the mic and **speak in Malayalam** (or Hindi, Tamil, English: auto-detected) | Every report appears **live on a map**, colour-coded by type and sized by severity |
-| Optionally snap a **photo**; **GPS** is attached automatically | Malayalam original + **English translation** side by side |
-| Ask by voice: *"കൈനകരിയിൽ വെള്ളപ്പൊക്കമുണ്ടോ?"* (Is there flooding in Kainakary?) and **hear the answer spoken back in Malayalam** | Filter by category/status, mark reports *In progress / Resolved* |
-
-Hindi support matters here: Alappuzha has a large migrant-worker population, and their reports reach the same dashboard in English.
-
-## How it works
+## The loop
 
 ```
- 🎙️ voice (webm)  ──►  Sarvam Saaras v4 (speech-to-text, auto language detect,
-                        keyterms boosted with Alappuzha place names)
-                         │
-                         ▼
-                   Sarvam-105B  ──►  {English translation, category, severity 1–5, place}
-                         │
- 📷 photo + 📍 GPS ──────┤   (no GPS? fall back to a gazetteer of 18 local places)
-                         ▼
-                   reports store  ──►  live Leaflet map dashboard (polls every 4 s)
-
- ❓ voice question ─► Saaras v4 ─► Sarvam-105B (answers only from reports) ─► Bulbul v3 TTS ─► 🔊 Malayalam audio
+  RESIDENT (phone, any language)                       OFFICIAL (Situation Room)
+  ─────────────────────────────                        ──────────────────────────
+  🎙️ speaks a report  ─┐                          ┌─►  incidents on a live map,
+  📷 photo  📍 GPS     │                          │    duplicates merged + confirmed
+  📶 no signal? queued │   Sarvam Saaras v4 STT   │
+     and sent later    ├─► Sarvam-105B triage ────┤    flood-risk index per village
+                       │   (translate, category,  │    = rain forecast + river forecast
+                       │    severity, place)      │      + resident reports + terrain
+                       │                          │
+  🔔 hears an alert  ◄─┼── Bulbul v3 TTS ◄──── Sarvam Translate ◄── 📢 official reviews
+     in Malayalam /    │   (ml / hi / en)       (ml + hi, scripts      & sends an alert,
+     Hindi / English   │                         and dates verified)   targeted by radius
+                       │
+  ❓ "Will Kainakary flood?" ─► answer grounded in incidents + risk + alerts, spoken back
 ```
 
-| Sarvam API | Used for |
+## Features
+
+| | Feature | Depth |
+|---|---|---|
+| 🎙️ | **Voice reporting in any Indian language** | Auto language detection (`saaras:v4`, `language_code=unknown`), Malayalam + English place-name hints, fuzzy matching of misheard village names |
+| 🌧️ | **Flood-risk index for 13 villages (0–100)** | Live **Open-Meteo rainfall** + **GloFAS river-discharge** forecasts, open flood reports within 3 km (severity- and recency-weighted), and terrain (below-sea-level Kuttanad polders score highest). Every score is **explained** ("25 mm on Wednesday 25 November; river rising to 1.4×; 3 flood reports within 3 km") |
+| 👥 | **Incidents, not just pins** | Reports of the same problem within 600 m and 72 h merge into one incident with a confirmation count. 2+ reports or a photo marks it **confirmed**, which cuts duplicates and spam |
+| 📢 | **Location-targeted voice alerts** | Official picks an area or incident → AI writes the alert in English from verified facts only → **Sarvam Translate** produces Malayalam + Hindi → official reviews and edits → Bulbul voices all three → phones within the chosen radius show it and play it |
+| ❓ | **Ask by voice** | Answers are grounded in incidents, the risk index and active alerts; first-hand reports take priority; spoken back in the asker's language |
+| 📋 | **AI situation brief** | One click: English brief for the district team + Malayalam voice summary for ward members |
+| 📶 | **Works without signal** | Reports made offline (audio + photo) are stored on the phone (IndexedDB) and sent automatically on reconnect, keeping the original capture time. The app shell works offline (service worker) |
+| 🔒 | **Authority passcode** | Status changes, alerts and briefs need `ADMIN_PASSCODE`; viewing is public |
+
+## Accuracy and safety: measured, not assumed
+
+`npm run eval` runs the real pipeline against Sarvam and prints everything, including back-translations so non-Malayalam speakers can check the output.
+
+| Check | Result |
 |---|---|
-| `POST /speech-to-text` (`saaras:v4`, `language_code=unknown`, `keyterms`) | Transcribing reports & questions in any Indian language |
-| `POST /v1/chat/completions` (`sarvam-105b`) | Translation + triage into structured JSON; grounded Q&A |
-| `POST /text-to-speech` (`bulbul:v3`, mp3) | Speaking answers back in the user's language |
+| 10 spoken reports (7 Malayalam, 1 Hindi, 1 Tamil, 1 English): language, category, place, severity | **10/10** (first version: 7/10; place names were misheard until fixed) |
+| Alert scripts: Malayalam in Malayalam script, Hindi in Devanagari | Verified on every draft, and the server refuses to broadcast otherwise |
+| Village names in translated alerts | Placeholder protection keeps the official spelling (കൈനകരി / कैनकरी) |
+| Dates in translated alerts | Full dates only; a timing check rejects any translation that adds "today/tomorrow" |
 
-## Measured accuracy
+Issues the evaluation caught and fixed: an LLM writing Malayalam into the Hindi field (now translated with Sarvam Translate and script-checked), a translator turning "on Wednesday, in 4 days" into "tomorrow, for four days" (now absolute dates, a timing check and a second-model retry), the translator respelling village names (now placeholder-protected), and a Q&A answer saying a hyacinth-blocked canal was fine to travel (first-hand incidents now take priority).
 
-`npm run eval` speaks 10 realistic reports (7 Malayalam, 1 Hindi, 1 Tamil, 1 English) with Sarvam TTS, runs them through the real pipeline, and checks language, category, place and severity against known answers. Q&A answers are translated back to English so non-Malayalam speakers can check them.
+**Human in the loop:** the AI never sends anything by itself. Every alert is reviewed and editable before broadcast. The risk index is labelled as an *indicative community index, not an official warning*, and points people to IMD and KSDMA.
 
-| Run | Language | Category | Place | Fully correct |
-|---|---|---|---|---|
-| First version | 10/10 | 10/10 | 7/10 | 7/10 |
-| + Malayalam place-name hints for STT, local gazetteer in the prompt, fuzzy matching, temperature 0 | 10/10 | 10/10 | **10/10** | **10/10** |
+## Sarvam APIs used
 
-Place names were the weak spot: speech recognition heard *Nedumudi* as "Nemudy" and *Mancombu* as "Manpump". Now the app recovers them.
+| API | Used for |
+|---|---|
+| `POST /speech-to-text` · `saaras:v4` | Reports and questions in any Indian language, with keyterms |
+| `POST /v1/chat/completions` · `sarvam-105b` (`reasoning_effort: null`) | Triage to JSON, grounded Q&A, alert drafting, situation brief |
+| `POST /translate` · `mayura:v1` (fallback `sarvam-translate:v1`) | Alert translation to Malayalam + Hindi |
+| `POST /text-to-speech` · `bulbul:v3` | Spoken answers, voice alerts (ml/hi/en), brief audio |
+
+## Tests
+
+```bash
+npm test        # 30 unit + API tests, offline (mock mode, no credits)
+npm run eval    # live accuracy evaluation against Sarvam (~₹6)
+```
+
+A 19-step browser test (Playwright, real Chrome, **live Sarvam AI**) covers: a Malayalam voice report through the real microphone path, photo upload, the offline queue and reconnect, the incident merge, passcode rejection and acceptance, risk charts, alert draft → edit → broadcast, a resident inside the radius receiving it in Malayalam and Hindi, a resident 20 km away not receiving it, the brief, live fly-to, layer toggles and the mobile layout. **19/19 pass.**
 
 ## Run it
 
 ```bash
 npm install
-cp .env.example .env      # paste your SARVAM_API_KEY (leave empty for offline demo mode)
-npm start                 # http://localhost:3000   dashboard: http://localhost:3000/dashboard
-npm test                  # end-to-end API tests in mock mode (uses no credits)
-npm run eval              # live accuracy check against Sarvam (~₹5 of credits)
+cp .env.example .env      # SARVAM_API_KEY=..., optional ADMIN_PASSCODE=...
+npm start                 # http://localhost:3000   Situation Room: /dashboard
 ```
 
-Requires Node 22+. No build step, no database server: one Express app and a JSON file store.
+Node 22+. No build step. One Express app with a JSON file store. Weather data needs no key.
 
-> Mic, camera and GPS need HTTPS on phones. Use the deployed URL (Render, see `render.yaml`) or a tunnel such as `npx localtunnel --port 3000`.
-
-## Credit budget (Sarvam)
-
-One voice report = one STT call (~10 s ≈ ₹0.08) + one chat call (~600 tokens ≈ ₹0.01).
-One voice question adds TTS (~150 chars ≈ ₹0.45). **500 credits (assuming 1 credit ≈ ₹1) cover several hundred full demo interactions.**
-Safeguards: `MOCK=1` for UI work, a per-IP rate limit (30 AI calls / 10 min), and live usage counters at `/api/health`.
+> Mic, camera and GPS need HTTPS on phones: use the Render deploy (`render.yaml`) or a tunnel.
 
 ## Project layout
 
 ```
-server.js            entry point (loads .env)
-src/app.js           Express routes: /api/reports, /api/ask, /api/health
-src/sarvam.js        Sarvam REST client (STT, chat, TTS) + usage counters
-src/ai.js            triage + Q&A prompts, language helpers, offline mock mode
-src/places.js        Alappuzha gazetteer (STT keyterms + location fallback)
-src/seed.js          illustrative sample reports (flagged "sample" in the UI)
-src/store.js         JSON-file store
-public/              resident PWA (index.html/app.js) + dashboard (dashboard.html/js)
-test/api.test.js     end-to-end tests
+src/app.js         routes: reports, incidents, risk, alerts, brief, ask (+ passcode, rate limits)
+src/sarvam.js      Sarvam client: STT, chat, translate, TTS + usage counters
+src/ai.js          triage, grounded Q&A, alert drafting + translation checks, brief
+src/risk.js        explainable flood-risk index
+src/weather.js     Open-Meteo rain + GloFAS river forecasts (cached, fail-safe)
+src/incidents.js   duplicate-report clustering
+src/places.js      Alappuzha gazetteer: coordinates, terrain, ml/hi names, place protection
+public/            resident PWA (app.js, offline.js, sw.js) + Situation Room (dashboard.js)
+test/              API + unit tests        scripts/eval.mjs   live accuracy evaluation
 ```
+
+## Credit budget
+
+A voice report costs about ₹0.10, a spoken answer about ₹0.50, and a 3-language voice alert about ₹2. **500 credits (assuming 1 credit ≈ ₹1) cover a full hackathon of demos.** Per-IP rate limits, mock mode and live usage counters (`/api/health`) protect them.
 
 ## Roadmap
 
-- WhatsApp / IVR phone-call reporting for people without smartphones
-- Auto-routing to the right department (municipality, irrigation, pollution control board)
-- Flood early warnings: push a Malayalam voice alert to everyone near a high-severity report
-- Photo-based detection of water hyacinth and plastic density
+IVR / WhatsApp voice for feature phones · auto-routing to the right department (irrigation, pollution control board, municipality) · KSDMA / IMD warning ingestion · bund-breach prediction from historical flood maps · photo-based hyacinth and plastic detection.
 
-*Sample reports on first run are illustrative demo data at real Alappuzha locations, not real incidents.*
+*Sample reports on first run are illustrative demo data at real Alappuzha locations (labelled "sample"), not real incidents.*
 
 MIT licensed.

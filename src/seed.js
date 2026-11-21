@@ -18,7 +18,10 @@ const S = [
   ['Ramankary', 'ml-IN', 'രാമങ്കരിയിൽ കുടിവെള്ളത്തിന് നിറവ്യത്യാസം', 'Drinking water in Ramankary has changed colour', 'Discoloured drinking water in Ramankary', 'water_quality', 4, 'open', 7],
   ['Pathiramanal', 'en-IN', 'Saw an oil sheen on the water near Pathiramanal island jetty', 'Saw an oil sheen on the water near Pathiramanal island jetty', 'Oil sheen near Pathiramanal jetty', 'water_quality', 3, 'open', 18],
   ['Alappuzha Boat Jetty', 'ml-IN', 'ബോട്ട് ജെട്ടിക്ക് സമീപം പോള കൂടി ബോട്ടുകൾ കുടുങ്ങുന്നു', 'Water hyacinth is building up near the boat jetty and boats are getting stuck', 'Hyacinth trapping boats at the jetty', 'blocked_canal', 3, 'in_progress', 22],
-  ['Kidangara', 'ml-IN', 'കിടങ്ങറയിൽ വെള്ളക്കെട്ട് കുറഞ്ഞു തുടങ്ങി', 'Waterlogging in Kidangara has started to recede', 'Waterlogging receding in Kidangara', 'flood', 2, 'resolved', 50],
+  ['Kainakary', 'hi-IN', 'कैनकरी में घरों में पानी घुस रहा है, बच्चों को निकालना पड़ेगा', 'Water is entering houses in Kainakary, children will have to be evacuated', 'Homes flooding in Kainakary', 'flood', 5, 'open', 2],
+  ['Kainakary', 'ml-IN', 'കൈനകരി പാലത്തിന് അടുത്ത് റോഡ് മുഴുവൻ വെള്ളത്തിനടിയിൽ', 'The road near Kainakary bridge is completely under water', 'Road under water near Kainakary bridge', 'flood', 4, 'open', 3],
+  ['Champakulam', 'ml-IN', 'ചമ്പക്കുളത്ത് പോള കാരണം ജലഗതാഗത ബോട്ട് നിർത്തി', 'Water transport boat service stopped at Champakulam because of water hyacinth', 'Ferry halted by hyacinth at Champakulam', 'blocked_canal', 4, 'open', 16],
+  ['Kidangara', 'ml-IN','കിടങ്ങറയിൽ വെള്ളക്കെട്ട് കുറഞ്ഞു തുടങ്ങി', 'Waterlogging in Kidangara has started to recede', 'Waterlogging receding in Kidangara', 'flood', 2, 'resolved', 50],
 ];
 
 export function seedReports() {

@@ -13,7 +13,10 @@ if (!process.env.SARVAM_API_KEY) throw new Error('Set SARVAM_API_KEY in .env fir
 delete process.env.MOCK;
 
 const { textToSpeech, usage } = await import('../src/sarvam.js');
-const { transcribe, triage, answer } = await import('../src/ai.js');
+const { transcribe, triage, answer, draftAlert, scriptProblems } = await import('../src/ai.js');
+const { clusterReports } = await import('../src/incidents.js');
+const { computeRisk } = await import('../src/risk.js');
+const { getForecast } = await import('../src/weather.js');
 const { matchPlace } = await import('../src/places.js');
 const { seedReports } = await import('../src/seed.js');
 
@@ -34,6 +37,7 @@ const QUESTIONS = [
   { lang: 'ml-IN', text: 'കൈനകരിയിൽ വെള്ളപ്പൊക്കമുണ്ടോ?', meaning: 'Is there flooding in Kainakary?' },
   { lang: 'ml-IN', text: 'ചമ്പക്കുളത്തേക്ക് വള്ളത്തിൽ പോകാമോ?', meaning: 'Can I go to Champakulam by boat?' },
   { lang: 'ml-IN', text: 'കുമരകത്ത് എന്തെങ്കിലും പ്രശ്നമുണ്ടോ?', meaning: 'Is there any problem in Kumarakom? (nothing reported: should say so)' },
+  { lang: 'ml-IN', text: 'അടുത്ത ദിവസങ്ങളിൽ കുട്ടനാട്ടിൽ മഴ കൂടുമോ?', meaning: 'Will rain increase in Kuttanad in the coming days? (should use the live forecast)' },
 ];
 
 async function toEnglish(text) {
@@ -72,16 +76,30 @@ for (const [i, c] of CASES.entries()) {
 
 console.log('=== 2. Voice Q&A (answers translated back to English for checking) ===\n');
 const reports = seedReports();
+const risk = computeRisk(await getForecast(), reports);
+const ctx = { incidents: clusterReports(reports), risk, alerts: [] };
 for (const q of QUESTIONS) {
   const audio = Buffer.from(await textToSpeech(q.text, q.lang), 'base64');
   const stt = await transcribe(audio, 'audio/mpeg');
-  const a = await answer(stt.transcript, stt.languageCode, reports);
+  const a = await answer(stt.transcript, stt.languageCode, ctx);
   console.log(`Q: ${q.meaning}`);
   console.log(`   heard  : ${stt.transcript}`);
   console.log(`   answer : ${a.text}`);
   console.log(`   english: ${await toEnglish(a.text)}`);
   console.log(`   spoken : ${a.audio ? 'yes' : 'NO'}\n`);
 }
+
+console.log('=== 3. Voice alert drafting (English -> Sarvam Translate; scripts verified) ===\n');
+const top = risk.areas[0];
+const al = await draftAlert({ kind: 'area', area: top });
+const bad = scriptProblems(al);
+console.log(`Area: ${top.name} (${top.levelEn})`);
+console.log(`   en      : ${al.en}`);
+console.log(`   ml      : ${al.ml}`);
+console.log(`   ml -> en: ${await toEnglish(al.ml)}`);
+console.log(`   hi      : ${al.hi}`);
+console.log(`   hi -> en: ${await toEnglish(al.hi)}`);
+console.log(`   scripts : ${bad.length ? 'FAIL ' + bad.join('; ') : 'OK (Malayalam + Devanagari verified)'}\n`);
 
 console.log(`=== RESULT: ${pass}/${CASES.length} reports fully correct (language + category + place + severity) ===`);
 console.log('Sarvam usage:', JSON.stringify(usage));
