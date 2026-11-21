@@ -1,5 +1,5 @@
 // Tests for: flood-risk engine, incident clustering, alerts (draft/broadcast/targeting),
-// situation brief, authority passcode, offline capture time, and grounded Q&A. MOCK mode: no credits.
+// situation brief, offline capture time, and grounded Q&A. MOCK mode: no credits.
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,7 +7,6 @@ import os from 'node:os';
 import path from 'node:path';
 
 process.env.MOCK = '1';
-process.env.ADMIN_PASSCODE = 'test-pass';
 const { createApp } = await import('../src/app.js');
 const { scoreArea, computeRisk, levelFor } = await import('../src/risk.js');
 const { clusterReports } = await import('../src/incidents.js');
@@ -131,7 +130,7 @@ describe('incident clustering', () => {
 
 describe('API', () => {
   let server, base, tmp;
-  const admin = { 'Content-Type': 'application/json', 'x-admin-passcode': 'test-pass' };
+  const admin = { 'Content-Type': 'application/json' };
   const json = (method, body, headers = admin) => ({ method, headers, body: JSON.stringify(body) });
 
   before(async () => {
@@ -143,33 +142,6 @@ describe('API', () => {
   after(() => {
     server?.close();
     fs.rmSync(tmp, { recursive: true, force: true });
-  });
-
-  test('authority passcode protects admin actions', async () => {
-    assert.equal((await fetch(`${base}/api/admin/check`)).status, 401);
-    assert.equal((await fetch(`${base}/api/admin/check`, { headers: { 'x-admin-passcode': 'wrong' } })).status, 401);
-    assert.equal((await fetch(`${base}/api/admin/check`, { headers: admin })).status, 200);
-    assert.equal((await fetch(`${base}/api/admin/check`, { headers: { 'x-admin-passcode': '  test-pass ' } })).status, 200); // stray spaces tolerated
-    const [r] = await (await fetch(`${base}/api/reports`)).json();
-    assert.equal((await fetch(`${base}/api/reports/${r.id}`, json('PATCH', { status: 'resolved' }, { 'Content-Type': 'application/json' }))).status, 401);
-    assert.equal((await fetch(`${base}/api/alerts/draft`, json('POST', { kind: 'area', name: 'Kainakary' }, { 'Content-Type': 'application/json' }))).status, 401);
-    assert.equal((await fetch(`${base}/api/brief`, { method: 'POST' })).status, 401);
-    const h = await (await fetch(`${base}/api/health`)).json();
-    assert.equal(h.adminProtected, true);
-  });
-
-  test('production without a passcode fails closed', async () => {
-    const saved = { p: process.env.ADMIN_PASSCODE, e: process.env.NODE_ENV };
-    delete process.env.ADMIN_PASSCODE;
-    process.env.NODE_ENV = 'production';
-    try {
-      const r = await fetch(`${base}/api/admin/check`);
-      assert.equal(r.status, 503);
-      assert.equal((await (await fetch(`${base}/api/health`)).json()).adminProtected, true);
-    } finally {
-      process.env.ADMIN_PASSCODE = saved.p;
-      if (saved.e === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = saved.e;
-    }
   });
 
   test('risk endpoint covers every area, sorted, Kainakary elevated by seeded flood reports', async () => {

@@ -46,7 +46,6 @@ Much of Kuttanad is farmed **below sea level** behind earthen bunds. When rain a
 | ❓ | **Ask by voice** | Answers are grounded in incidents, the risk index and active alerts; first-hand reports take priority; spoken back in the asker's language |
 | 📋 | **AI situation brief** | One click: English brief for the district team + Malayalam voice summary for ward members |
 | 📶 | **Works without signal** | Reports made offline (audio + photo) are stored on the phone (IndexedDB) and sent automatically on reconnect, keeping the original capture time. The app shell works offline (service worker) |
-| 🔒 | **Authority passcode** | Status changes, alerts and briefs need `ADMIN_PASSCODE`; viewing is public |
 
 ## Accuracy and safety: measured, not assumed
 
@@ -75,17 +74,17 @@ Issues the evaluation caught and fixed: an LLM writing Malayalam into the Hindi 
 ## Tests
 
 ```bash
-npm test        # 33 unit + API tests, offline (mock mode, no credits)
+npm test        # 31 unit + API tests, offline (mock mode, no credits)
 npm run eval    # live accuracy evaluation against Sarvam (~₹6)
 ```
 
-A 19-step browser test (Playwright, real Chrome, **live Sarvam AI**) covers: a Malayalam voice report through the real microphone path, photo upload, the offline queue and reconnect, the incident merge, passcode rejection and acceptance, risk charts, alert draft → edit → broadcast, a resident inside the radius receiving it in Malayalam and Hindi, a resident 20 km away not receiving it, the brief, live fly-to, layer toggles and the mobile layout. **19/19 pass.**
+A 19-step browser test (Playwright, real Chrome, **live Sarvam AI**) covers: a Malayalam voice report through the real microphone path, photo upload, the offline queue and reconnect, the incident merge, status changes, risk charts, alert draft → edit → broadcast, a resident inside the radius receiving it in Malayalam and Hindi, a resident 20 km away not receiving it, the brief, live fly-to, layer toggles and the mobile layout. **19/19 pass.**
 
 ## Run it
 
 ```bash
 npm install
-cp .env.example .env      # SARVAM_API_KEY=..., optional ADMIN_PASSCODE=...
+cp .env.example .env      # paste SARVAM_API_KEY=...
 npm start                 # http://localhost:3000   Situation Room: /dashboard
 ```
 
@@ -96,7 +95,7 @@ Node 22+. No build step. One Express app with a JSON file store. Weather data ne
 ## Project layout
 
 ```
-src/app.js         routes: reports, incidents, risk, alerts, brief, ask (+ passcode, rate limits)
+src/app.js         routes: reports, incidents, risk, alerts, brief, ask (+ per-IP rate limits)
 src/sarvam.js      Sarvam client: STT, chat, translate, TTS + usage counters
 src/ai.js          triage, grounded Q&A, alert drafting + translation checks, brief
 src/risk.js        explainable flood-risk index

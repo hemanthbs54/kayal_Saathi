@@ -11,5 +11,3 @@ services:
         value: production
       - key: SARVAM_API_KEY
         sync: false
-      - key: ADMIN_PASSCODE
-        sync: false

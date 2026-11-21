@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import express from 'express';
 import multer from 'multer';
 import { createStore } from './store.js';
@@ -29,21 +28,6 @@ function rateLimit({ max, windowMs }) {
   };
 }
 
-/** Authority actions (status changes, alerts, briefs) need ADMIN_PASSCODE when it is set. */
-function requireAdmin(req, res, next) {
-  // Trim both sides: a stray space or newline pasted into a hosting dashboard must not lock officials out.
-  const expected = (process.env.ADMIN_PASSCODE || '').trim();
-  if (!expected) {
-    // Fail closed on a public deployment: nobody can broadcast alerts until a passcode is configured.
-    if (process.env.NODE_ENV === 'production') return res.status(503).json({ error: 'Authority actions are disabled until ADMIN_PASSCODE is set on the server.' });
-    return next();
-  }
-  const given = String(req.get('x-admin-passcode') || '').trim();
-  const a = crypto.createHash('sha256').update(given).digest();
-  const b = crypto.createHash('sha256').update(expected).digest();
-  if (crypto.timingSafeEqual(a, b)) return next();
-  res.status(401).json({ error: 'Authority passcode required.' });
-}
 
 function num(v) {
   const n = Number.parseFloat(v);
@@ -78,10 +62,9 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
 
   // ---------- meta ----------
   app.get('/api/health', (req, res) => {
-    res.json({ ok: true, mock: isMock(), adminProtected: Boolean(process.env.ADMIN_PASSCODE) || process.env.NODE_ENV === 'production', usage });
+    res.json({ ok: true, mock: isMock(), usage });
   });
   app.get('/api/categories', (req, res) => res.json(CATEGORIES));
-  app.get('/api/admin/check', requireAdmin, (req, res) => res.json({ ok: true }));
 
   // ---------- reports ----------
   app.get('/api/reports', (req, res) => res.json(store.list()));
@@ -92,7 +75,7 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
     res.json(r);
   });
 
-  app.patch('/api/reports/:id', requireAdmin, (req, res) => {
+  app.patch('/api/reports/:id', (req, res) => {
     const { status } = req.body || {};
     if (!STATUSES.includes(status)) return res.status(400).json({ error: `status must be one of ${STATUSES.join(', ')}` });
     const r = store.update(req.params.id, { status });
@@ -175,7 +158,7 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
   // ---------- incidents ----------
   app.get('/api/incidents', (req, res) => res.json(incidents()));
 
-  app.patch('/api/incidents/:id', requireAdmin, (req, res) => {
+  app.patch('/api/incidents/:id', (req, res) => {
     const { status } = req.body || {};
     if (!STATUSES.includes(status)) return res.status(400).json({ error: `status must be one of ${STATUSES.join(', ')}` });
     const inc = incidents().find((i) => i.id === req.params.id);
@@ -189,7 +172,7 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
     const f = await getForecast();
     res.json({ ...computeRisk(f, store.list()), needsRiverRelay: needsRiverRelay(f) });
   });
-  app.post('/api/weather/river', requireAdmin, adminLimit, (req, res) => {
+  app.post('/api/weather/river', adminLimit, (req, res) => {
     const accepted = acceptRiverRelay(req.body?.areas);
     if (!accepted) return res.status(400).json({ error: 'No valid river data.' });
     res.json({ accepted });
@@ -211,14 +194,14 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
     return null;
   }
 
-  app.post('/api/alerts/draft', requireAdmin, adminLimit, async (req, res) => {
+  app.post('/api/alerts/draft', adminLimit, async (req, res) => {
     const subject = await resolveSubject(req.body);
     if (!subject) return res.status(400).json({ error: 'Choose an area or incident to alert.' });
     const text = await draftAlert(subject, String(req.body?.note || '').slice(0, 300));
     res.json({ subject: { kind: subject.kind, place: subject.place, level: subject.level }, text });
   });
 
-  app.post('/api/alerts', requireAdmin, adminLimit, async (req, res) => {
+  app.post('/api/alerts', adminLimit, async (req, res) => {
     const subject = await resolveSubject(req.body);
     if (!subject) return res.status(400).json({ error: 'Choose an area or incident to alert.' });
     const t = req.body?.text || {};
@@ -258,7 +241,7 @@ export function createApp({ dataDir, uploadsDir, publicDir, seed = true, aiRateL
 
   // ---------- situation brief ----------
   let briefCache = null;
-  app.post('/api/brief', requireAdmin, adminLimit, async (req, res) => {
+  app.post('/api/brief', adminLimit, async (req, res) => {
     if (briefCache && Date.now() - briefCache.at < BRIEF_TTL_MS && !req.query.fresh) return res.json(briefCache.data);
     const data = { ...(await situationBrief({ incidents: incidents(), risk: await risk(), alerts: activeAlerts() })), at: new Date().toISOString() };
     briefCache = { at: Date.now(), data };

@@ -2,17 +2,13 @@
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const ls = {
-  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode */ } },
-};
 
 const CATS = { waste: 'Waste dumping', flood: 'Flooding', blocked_canal: 'Blocked canal', water_quality: 'Water pollution', other: 'Other' };
 const STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved' };
 const LANG = { 'ml-IN': 'Malayalam', 'hi-IN': 'Hindi', 'ta-IN': 'Tamil', 'en-IN': 'English', 'bn-IN': 'Bengali', 'kn-IN': 'Kannada', 'te-IN': 'Telugu' };
 const LEVEL_COLOR = { low: '--lv-low', moderate: '--lv-moderate', high: '--lv-high', severe: '--lv-severe' };
 
-const state = { incidents: [], risk: null, alerts: [], selectedArea: null, adminProtected: false };
+const state = { incidents: [], risk: null, alerts: [], selectedArea: null };
 const activeCats = new Set(Object.keys(CATS));
 const activeStatus = new Set(['open', 'in_progress']);
 const knownReports = new Set();
@@ -46,47 +42,12 @@ function modal(html) {
   return { el: bg.querySelector('.modal'), close: () => bg.remove() };
 }
 
-// ---------- authority passcode ----------
-function askPasscode() {
-  return new Promise((resolve) => {
-    const m = modal(`<h2>🔒 Authority passcode</h2>
-      <p class="small muted">Status changes, alerts and briefs are limited to officials.</p>
-      <label for="pc">Passcode</label><input id="pc" type="password" autocomplete="current-password" />
-      <p class="error small" id="pc-err"></p>
-      <div class="actions"><button class="btn" data-x>Cancel</button><button class="btn primary" data-ok>Unlock</button></div>`);
-    const input = m.el.querySelector('#pc');
-    input.focus();
-    const ok = async () => {
-      const pass = input.value.trim();
-      const res = await fetch('/api/admin/check', { headers: { 'x-admin-passcode': pass } });
-      if (res.ok) { ls.set('kayal-pass', pass); m.close(); updateLock(); resolve(true); }
-      else m.el.querySelector('#pc-err').textContent = res.status === 401 ? 'Wrong passcode.' : ((await res.json().catch(() => ({}))).error || 'Not available.');
-    };
-    m.el.querySelector('[data-ok]').onclick = ok;
-    input.onkeydown = (e) => e.key === 'Enter' && ok();
-    m.el.querySelector('[data-x]').onclick = () => { m.close(); resolve(false); };
-  });
-}
-
 async function api(path, opts = {}) {
-  const send = () => fetch(path, {
-    ...opts,
-    headers: { 'Content-Type': 'application/json', 'x-admin-passcode': ls.get('kayal-pass') || '', ...(opts.headers || {}) },
-  });
-  let res = await send();
-  if (res.status === 401 && (await askPasscode())) res = await send();
-  if (res.status === 503) { const b = await res.json().catch(() => ({})); throw new Error(b.error || 'Not available.'); }
+  const res = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
   return body;
 }
-
-function updateLock() {
-  const b = $('#lock-btn');
-  if (!state.adminProtected) b.textContent = '🔓 Open access';
-  else b.textContent = ls.get('kayal-pass') ? '🔓 Official' : '🔒 Sign in';
-}
-$('#lock-btn').onclick = () => askPasscode();
 
 // ---------- map ----------
 const map = L.map('map').setView([9.45, 76.4], 11);
@@ -406,10 +367,10 @@ $('#brief-btn').onclick = () => {
 
 // ---------- river relay ----------
 // If the server cannot reach the GloFAS river forecast (cloud IP rate limits), a signed-in official's
-// browser fetches it and relays it (passcode-protected). Tried at most every 30 minutes.
+// browser fetches it and relays it (validated by the server). Tried at most every 30 minutes.
 let lastRelay = 0;
 async function relayRiver(risk) {
-  if (!risk.needsRiverRelay || !ls.get('kayal-pass') || Date.now() - lastRelay < 30 * 60e3) return;
+  if (!risk.needsRiverRelay || Date.now() - lastRelay < 30 * 60e3) return;
   lastRelay = Date.now();
   try {
     const lat = risk.areas.map((a) => a.lat).join(',');
@@ -428,7 +389,7 @@ async function relayRiver(risk) {
         dates: dly.time.slice(cut),
       };
     }).filter(Boolean);
-    await fetch('/api/weather/river', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-passcode': ls.get('kayal-pass') }, body: JSON.stringify({ areas }) });
+    await fetch('/api/weather/river', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ areas }) });
     sigs.risk = '';
     refresh();
   } catch (e) {
@@ -476,6 +437,5 @@ async function refresh() {
   }
 }
 
-fetch('/api/health').then((r) => r.json()).then((h) => { state.adminProtected = h.adminProtected; updateLock(); }).catch(() => {});
 refresh();
 setInterval(refresh, 5000);
